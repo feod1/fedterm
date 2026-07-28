@@ -1,0 +1,14 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+*.xcodeproj
+
+# Build output
+dist/
+
+# IDE
+.idea/
+*.iml
+
+# macOS
+.DS_Store

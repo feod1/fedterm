@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" font-variant-ligatures="none" style="font-variant-ligatures:none" role="img" aria-label="FedTerm is a terminal for macOS that opens over any app when you press a hotkey. It keeps your Claude Code sessions, your favourite commands and your SSH connections in one searchable window.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101317"/>
+      <stop offset="0.55" stop-color="#161A20"/>
+      <stop offset="1" stop-color="#1E2227"/>
+    </linearGradient>
+
+    <radialGradient id="glowBlue" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#61AFEF" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#61AFEF" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glowOrange" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#D97857" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#D97857" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="glowPurple" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#C678DD" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#C678DD" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="panel" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#2A2F37" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#1B1F25" stop-opacity="0.96"/>
+    </linearGradient>
+
+    <linearGradient id="stroke" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.04"/>
+    </linearGradient>
+
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#9EC7F0"/>
+    </linearGradient>
+
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+    <clipPath id="cardClip">
+      <rect x="556" y="66" width="590" height="392" rx="16"/>
+    </clipPath>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="660" fill="url(#bg)"/>
+  <ellipse cx="180" cy="70" rx="520" ry="340" fill="url(#glowBlue)"/>
+  <ellipse cx="1120" cy="600" rx="500" ry="340" fill="url(#glowOrange)"/>
+  <ellipse cx="700" cy="40" rx="420" ry="240" fill="url(#glowPurple)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#FFFFFF" stroke-opacity="0.028">
+    <path d="M0 130H1200M0 260H1200M0 390H1200M0 520H1200"/>
+    <path d="M300 0V660M600 0V660M900 0V660"/>
+  </g>
+
+  <!-- ── left column ───────────────────────────────────────────── -->
+
+  <!-- app mark -->
+  <g transform="translate(72 86)">
+    <rect width="64" height="64" rx="16" fill="#1E2227" stroke="#61AFEF" stroke-opacity="0.55"/>
+    <rect width="64" height="64" rx="16" fill="url(#fade)"/>
+    <path d="M17 23l12 9-12 9" fill="none" stroke="#61AFEF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M35 43h13" stroke="#98C379" stroke-width="3.4" stroke-linecap="round"/>
+  </g>
+
+  <text x="72" y="215" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-2" fill="url(#title)">FedTerm</text>
+
+  <text x="74" y="252" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="500" fill="#9AA4B2">A Spotlight-style terminal for macOS</text>
+
+  <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15.5" fill="#C0C8D4">
+    <text x="74" y="292">Press the hotkey and it opens over whatever</text>
+    <text x="74" y="315">app you are in. Press it again and it hides.</text>
+  </g>
+
+  <!-- hotkey capsule -->
+  <g transform="translate(72 344)">
+    <rect width="152" height="46" rx="12" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.14"/>
+    <rect x="12" y="11" width="34" height="24" rx="7" fill="#0E1114" stroke="#FFFFFF" stroke-opacity="0.16"/>
+    <text x="29" y="28" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#E6E9EF">⌥</text>
+    <rect x="54" y="11" width="86" height="24" rx="7" fill="#0E1114" stroke="#FFFFFF" stroke-opacity="0.16"/>
+    <text x="97" y="28" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#E6E9EF">Space</text>
+  </g>
+  <text x="238" y="373" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#6E7887">works even over fullscreen apps</text>
+
+  <!-- feature chips -->
+  <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600">
+    <g transform="translate(72 424)">
+      <rect width="112" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.07" stroke="#FFFFFF" stroke-opacity="0.18"/>
+      <text x="56" y="20" text-anchor="middle" fill="#D3D9E2">macOS only</text>
+    </g>
+    <g transform="translate(194 424)">
+      <rect width="104" height="30" rx="15" fill="#61AFEF" fill-opacity="0.14" stroke="#61AFEF" stroke-opacity="0.35"/>
+      <text x="52" y="20" text-anchor="middle" fill="#8FC5F5">SwiftTerm</text>
+    </g>
+    <g transform="translate(308 424)">
+      <rect width="126" height="30" rx="15" fill="#D97857" fill-opacity="0.14" stroke="#D97857" stroke-opacity="0.35"/>
+      <text x="63" y="20" text-anchor="middle" fill="#E8A188">Claude Code</text>
+    </g>
+    <g transform="translate(444 424)">
+      <rect width="96" height="30" rx="15" fill="#98C379" fill-opacity="0.13" stroke="#98C379" stroke-opacity="0.32"/>
+      <text x="48" y="20" text-anchor="middle" fill="#A9D48A">zsh hooks</text>
+    </g>
+  </g>
+
+  <!-- ── right: Claude Code, in words ──────────────────────────── -->
+
+  <g filter="url(#shadow)">
+    <rect x="556" y="66" width="590" height="392" rx="16" fill="url(#panel)"/>
+  </g>
+  <g clip-path="url(#cardClip)">
+    <rect x="556" y="66" width="590" height="150" fill="url(#fade)"/>
+
+    <g transform="translate(600 118)">
+      <circle cx="8" cy="-4" r="7" fill="none" stroke="#D97857" stroke-width="2"/>
+      <circle cx="8" cy="-4" r="2.4" fill="#D97857"/>
+      <text x="28" y="0" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" letter-spacing="2.2" fill="#D97857">CLAUDE CODE</text>
+    </g>
+
+    <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6" fill="#EDF1F6">
+      <text x="600" y="176">All your Claude Code</text>
+      <text x="600" y="214">sessions in one place</text>
+    </g>
+
+    <rect x="600" y="244" width="72" height="2" rx="1" fill="#D97857" fill-opacity="0.8"/>
+
+    <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15.5" fill="#B7C0CC">
+      <g transform="translate(600 282)">
+        <circle cx="4" cy="-5" r="4" fill="#D97857" fill-opacity="0.9"/>
+        <text x="24" y="0">It saves every session you have ever run</text>
+      </g>
+      <g transform="translate(600 322)">
+        <circle cx="4" cy="-5" r="4" fill="#D97857" fill-opacity="0.7"/>
+        <text x="24" y="0">Open one and you carry on where you stopped</text>
+      </g>
+      <g transform="translate(600 362)">
+        <circle cx="4" cy="-5" r="4" fill="#D97857" fill-opacity="0.55"/>
+        <text x="24" y="0">Look for a session by project or by what it was about</text>
+      </g>
+      <g transform="translate(600 402)">
+        <circle cx="4" cy="-5" r="4" fill="#D97857" fill-opacity="0.4"/>
+        <text x="24" y="0">Restart your Mac and everything opens again</text>
+      </g>
+    </g>
+  </g>
+  <rect x="556" y="66" width="590" height="392" rx="16" fill="none" stroke="url(#stroke)" stroke-width="1"/>
+
+  <!-- ── feature row ───────────────────────────────────────────── -->
+
+  <text x="72" y="490" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#8A94A2">The same window also keeps the things you use every day:</text>
+
+  <g font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif">
+
+    <!-- 1 · favourite commands -->
+    <g transform="translate(72 512)">
+      <rect width="258" height="122" rx="14" fill="#FFFFFF" fill-opacity="0.045" stroke="#FFFFFF" stroke-opacity="0.09"/>
+      <g transform="translate(20 22)">
+        <path d="M11 1.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L11 16.4 5.1 19.5l1.2-6.5L1.5 8.4l6.6-.9z" fill="#E5C07B"/>
+      </g>
+      <text x="20" y="72" font-size="14" font-weight="700" fill="#DFE4EB">Commands you saved</text>
+      <text x="20" y="93" font-size="11.5" fill="#828C9B">Star a command once and it</text>
+      <text x="20" y="110" font-size="11.5" fill="#828C9B">waits for you on the home screen.</text>
+    </g>
+
+    <!-- 2 · saved ssh connections -->
+    <g transform="translate(344 512)">
+      <rect width="258" height="122" rx="14" fill="#FFFFFF" fill-opacity="0.045" stroke="#FFFFFF" stroke-opacity="0.09"/>
+      <g transform="translate(20 22)">
+        <rect x="1" y="2" width="20" height="7" rx="2.5" fill="none" stroke="#61AFEF" stroke-width="1.8"/>
+        <rect x="1" y="13" width="20" height="7" rx="2.5" fill="none" stroke="#61AFEF" stroke-width="1.8"/>
+        <circle cx="5.5" cy="5.5" r="1.4" fill="#61AFEF"/>
+        <circle cx="5.5" cy="16.5" r="1.4" fill="#61AFEF"/>
+      </g>
+      <text x="20" y="72" font-size="14" font-weight="700" fill="#DFE4EB">Your SSH connections</text>
+      <text x="20" y="93" font-size="11.5" fill="#828C9B">Save a server once and you are</text>
+      <text x="20" y="110" font-size="11.5" fill="#828C9B">back on it with two keystrokes.</text>
+    </g>
+
+    <!-- 3 · search -->
+    <g transform="translate(616 512)">
+      <rect width="258" height="122" rx="14" fill="#FFFFFF" fill-opacity="0.045" stroke="#FFFFFF" stroke-opacity="0.09"/>
+      <g transform="translate(20 22)">
+        <circle cx="9.5" cy="9.5" r="7.5" fill="none" stroke="#C678DD" stroke-width="2"/>
+        <path d="M15 15l6 6" stroke="#C678DD" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <text x="20" y="72" font-size="14" font-weight="700" fill="#DFE4EB">One field for everything</text>
+      <text x="20" y="93" font-size="11.5" fill="#828C9B">Type a few letters and it finds</text>
+      <text x="20" y="110" font-size="11.5" fill="#828C9B">your commands, servers, sessions.</text>
+    </g>
+
+    <!-- 4 · hotkeys -->
+    <g transform="translate(888 512)">
+      <rect width="258" height="122" rx="14" fill="#FFFFFF" fill-opacity="0.045" stroke="#FFFFFF" stroke-opacity="0.09"/>
+      <g transform="translate(20 22)">
+        <path d="M12 1L3 13h7l-1 9 10-13h-7z" fill="#98C379"/>
+      </g>
+      <text x="20" y="72" font-size="14" font-weight="700" fill="#DFE4EB">Shortcuts you choose</text>
+      <text x="20" y="93" font-size="11.5" fill="#828C9B">Put your own commands on</text>
+      <text x="20" y="110" font-size="11.5" fill="#828C9B">⌃1–9 and pick any global hotkey.</text>
+    </g>
+  </g>
+</svg>
