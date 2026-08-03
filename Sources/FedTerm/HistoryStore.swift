@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-/// Пути хранения данных приложения.
+/// Storage paths for application data.
 enum AppPaths {
     static var supportDir: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -16,8 +16,8 @@ enum AppPaths {
     static var zdotdir: URL { supportDir.appendingPathComponent("zdotdir", isDirectory: true) }
 }
 
-/// Хранилище истории команд: читает history.jsonl (пишут zsh-хуки и само приложение),
-/// следит за изменениями файла, отдаёт сессии, недавние ssh-цели и сводку за час.
+/// Command history store: reads history.jsonl (written by zsh hooks and the app itself),
+/// watches the file for changes, provides sessions, recent ssh targets, and the hourly summary.
 final class HistoryStore: ObservableObject {
     @Published private(set) var records: [CommandRecord] = []
 
@@ -33,7 +33,7 @@ final class HistoryStore: ObservableObject {
 
     deinit { stopWatching() }
 
-    // MARK: - Запись событий из приложения (start/end сессии)
+    // MARK: - Writing events from the app (session start/end)
 
     func appendEvent(_ event: String, sid: String) {
         let line = "{\"ts\":\(Int(Date().timeIntervalSince1970)),\"sid\":\"\(sid)\",\"event\":\"\(event)\"}\n"
@@ -45,7 +45,7 @@ final class HistoryStore: ObservableObject {
         }
     }
 
-    // MARK: - Чтение
+    // MARK: - Reading
 
     func reload() {
         guard let data = try? Data(contentsOf: AppPaths.historyFile),
@@ -62,12 +62,12 @@ final class HistoryStore: ObservableObject {
         DispatchQueue.main.async { self.records = parsed }
     }
 
-    /// Последняя выполненная команда данной сессии (для отслеживания «этот таб сейчас в ssh»).
+    /// Last executed command of a given session (to track "this tab is currently in ssh").
     func lastCommand(sid: String) -> CommandRecord? {
         records.last { $0.sid == sid && $0.event == nil && $0.cmd != nil }
     }
 
-    /// Сессии, активные за интервал, свежие сверху.
+    /// Sessions active within the interval, newest first.
     func sessions(within interval: TimeInterval) -> [SessionSummary] {
         let cutoff = Date().timeIntervalSince1970 - interval
         let relevant = records.filter { $0.ts >= cutoff }
@@ -77,7 +77,7 @@ final class HistoryStore: ObservableObject {
             .sorted { ($0.lastDate ?? .distantPast) > ($1.lastDate ?? .distantPast) }
     }
 
-    /// Недавние ssh-цели по всей истории: сортировка по свежести, потом по частоте.
+    /// Recent ssh targets across the whole history: sorted by recency, then by frequency.
     func recentSSHTargets(limit: Int = 8) -> [SSHTarget] {
         var lastUse: [String: Double] = [:]
         var count: [String: Int] = [:]
@@ -99,8 +99,8 @@ final class HistoryStore: ObservableObject {
             .compactMap { byKey[$0] }
     }
 
-    /// Последние команды (свежие сверху), максимум limit. Служебные запуски клода
-    /// (claude --resume/--session-id) отфильтрованы — они засоряют историю.
+    /// Latest commands (newest first), at most limit. Internal Claude launches
+    /// (claude --resume/--session-id) are filtered out — they clutter the history.
     func recentCommands(limit: Int = 200) -> [CommandRecord] {
         var out: [CommandRecord] = []
         for rec in records.reversed() {
@@ -112,7 +112,7 @@ final class HistoryStore: ObservableObject {
         return out
     }
 
-    /// Краткая сводка «что было за последний час» — по ключевым словам.
+    /// Brief "what happened in the last hour" summary — keyword-based.
     func summary(within interval: TimeInterval = 3600, recentLimit: Int = 30) -> ActivitySummary {
         let cutoff = Date().timeIntervalSince1970 - interval
         let commands = records.filter { $0.ts >= cutoff && $0.event == nil && $0.cmd != nil }
@@ -134,13 +134,13 @@ final class HistoryStore: ObservableObject {
         return ActivitySummary(
             interval: interval,
             totalCommands: commands.count,
-            sshTargets: sshOrder.reversed().compactMap { seenSSH[$0] }, // последние использованные — первыми
+            sshTargets: sshOrder.reversed().compactMap { seenSSH[$0] }, // most recently used first
             kindCounts: kindCounts,
             recent: commands.suffix(recentLimit).reversed()
         )
     }
 
-    // MARK: - Наблюдение за файлом
+    // MARK: - File watching
 
     private func ensureFileExists() {
         let path = AppPaths.historyFile.path
@@ -179,7 +179,7 @@ final class HistoryStore: ObservableObject {
     }
 }
 
-/// Закреплённые (сохранённые) ssh-подключения — «всегда на главной».
+/// Pinned (saved) ssh connections — "always on the home screen".
 final class PinsStore: ObservableObject {
     @Published private(set) var pins: [SSHTarget] = []
 

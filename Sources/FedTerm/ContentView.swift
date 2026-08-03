@@ -3,7 +3,7 @@ import AppKit
 import Combine
 import UniformTypeIdentifiers
 
-/// Корневая вью панели: тонкий таб-бар (появляется, когда нужен) + активная вкладка.
+/// Root view of the panel: a thin tab bar (appears when needed) + the active tab.
 struct ContentView: View {
     @EnvironmentObject var tabs: TabsModel
     @EnvironmentObject var history: HistoryStore
@@ -12,6 +12,7 @@ struct ContentView: View {
     @ObservedObject var panelState: PanelBridge = .shared
     @ObservedObject var automationsStore: AutomationsStore = .shared
     @ObservedObject var customThemes: CustomThemesStore = .shared
+    @ObservedObject var recentTabsState: RecentTabsState = .shared
     @State private var dropTargeted = false
 
     var body: some View {
@@ -38,6 +39,9 @@ struct ContentView: View {
             if let folder = claude.pendingFolder {
                 ClaudeNameOverlay(folder: folder)
             }
+            if recentTabsState.visible {
+                RecentTabsOverlay()
+            }
             if automationsStore.editorVisible {
                 AutomationEditorOverlay()
             }
@@ -46,7 +50,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 680, minHeight: 420)
-        .ignoresSafeArea(.container, edges: .top) // контент с самого верха, без зоны невидимого тайтлбара
+        .ignoresSafeArea(.container, edges: .top) // content starts at the very top, no invisible title-bar zone
         .onDrop(of: [UTType.fileURL], isTargeted: $dropTargeted) { providers in
             handleDrop(providers)
         }
@@ -55,7 +59,7 @@ struct ContentView: View {
         }
     }
 
-    /// Drop папки (например, из обозревателя WebStorm) → оверлей имени → вкладка с Claude.
+    /// Dropping a folder (e.g. from the WebStorm explorer) → name overlay → a Claude tab.
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) })
         else { return false }
@@ -69,13 +73,13 @@ struct ContentView: View {
             guard var folder = url else { return }
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDir) else { return }
-            if !isDir.boolValue { folder = folder.deletingLastPathComponent() } // кинули файл — берём его папку
+            if !isDir.boolValue { folder = folder.deletingLastPathComponent() } // a file was dropped — take its folder
             DispatchQueue.main.async { claude.pendingFolder = folder }
         }
         return true
     }
 
-    // шапка всегда видна — в ней кнопки клода и настроек
+    // the header is always visible — it holds the Claude and settings buttons
     private var showTabBar: Bool { true }
 
     @ViewBuilder
@@ -84,10 +88,10 @@ struct ContentView: View {
             switch tab.kind {
             case .home:
                 HomeView(tab: tab)
-                    .id(tab.id) // свой стейт для каждой домашней вкладки
+                    .id(tab.id) // separate state for each home tab
             case .terminal(let controller):
                 TerminalHostView(controller: controller)
-                    .id(tab.id) // иначе SwiftUI не подменяет NSView при переключении терминал → терминал
+                    .id(tab.id) // otherwise SwiftUI doesn't swap the NSView when switching terminal → terminal
                     .padding(.horizontal, 3)
                     .padding(.bottom, 3)
             }
@@ -99,8 +103,8 @@ struct ContentView: View {
         if let terminal = tab.terminal {
             DispatchQueue.main.async { terminal.focus() }
         } else {
-            // новая/домашняя вкладка: забрать фокус у терминала и отдать полю ввода,
-            // иначе стрелки продолжают листать историю шелла
+            // new/home tab: take focus away from the terminal and give it to the input field,
+            // otherwise the arrow keys keep scrolling the shell history
             DispatchQueue.main.async {
                 NSApp.keyWindow?.makeFirstResponder(nil)
                 PanelBridge.shared.panelShown.send()
@@ -109,7 +113,7 @@ struct ContentView: View {
     }
 }
 
-/// Тонкая полоска вкладок в стиле «стекло».
+/// A thin tab strip in the "glass" style.
 struct TabBarView: View {
     @EnvironmentObject var tabs: TabsModel
     @ObservedObject var panelState: PanelBridge = .shared
@@ -141,9 +145,9 @@ struct TabBarView: View {
                 .animation(.easeInOut(duration: 0.15), value: tabs.tabs.map(\.id))
                 .padding(.horizontal, 2)
             }
-            // полоса вкладок — по ширине контента (не больше доступного);
-            // когда вкладок много — внутри включается скролл.
-            // layoutPriority — иначе HStack делит ширину пополам с drag-зоной
+            // the tab strip sizes to its content width (no more than available);
+            // with many tabs, scrolling kicks in inside.
+            // layoutPriority — otherwise HStack splits the width evenly with the drag zone
             .frame(maxWidth: max(tabsContentWidth, 60), alignment: .leading)
             .layoutPriority(1)
             Button { tabs.newTab() } label: {
@@ -156,7 +160,7 @@ struct TabBarView: View {
             .buttonStyle(.plain)
             .help(L.newTabHelp)
 
-            // пустая середина таб-бара — ручка для перетаскивания окна
+            // the empty middle of the tab bar is the window drag handle
             WindowDragArea()
                 .frame(minWidth: 24, maxWidth: .infinity)
                 .frame(height: 20)
@@ -180,7 +184,7 @@ struct TabBarView: View {
     }
 }
 
-/// Зона, за которую таскается окно (пустое место таб-бара).
+/// The zone used to drag the window (empty space in the tab bar).
 struct WindowDragArea: NSViewRepresentable {
     final class DragView: NSView {
         override func mouseDown(with event: NSEvent) {
@@ -200,8 +204,8 @@ private struct TabFramesKey: PreferenceKey {
 }
 
 extension TabBarView {
-    /// Ручная перестановка вкладок: без системного drag&drop — мгновенно,
-    /// без «призрака» на курсоре. Своп при пересечении середины соседа.
+    /// Manual tab reordering: no system drag&drop — instant,
+    /// no "ghost" on the cursor. Swaps when crossing the neighbor's midpoint.
     fileprivate func reorderGesture(for tab: Tab) -> some Gesture {
         DragGesture(minimumDistance: 5, coordinateSpace: .named("tabbar"))
             .onChanged { value in
@@ -210,7 +214,7 @@ extension TabBarView {
                 guard let myFrame = tabFrames[tab.id] else { return }
                 for (otherID, frame) in tabFrames where otherID != tab.id {
                     let movingRight = frame.minX > myFrame.minX
-                    // меняем местами, только когда курсор перевалил середину соседа
+                    // swap only once the cursor has crossed the neighbor's midpoint
                     if movingRight ? (x > frame.midX && x < frame.maxX + 20)
                                    : (x < frame.midX && x > frame.minX - 20) {
                         tabs.move(id: tab.id, to: otherID)
@@ -270,7 +274,7 @@ private struct TabChip: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { startRename() }
         .simultaneousGesture(TapGesture().onEnded {
-            // не трогаем выделение, если вкладку только что закрыли крестиком
+            // don't touch the selection if the tab was just closed via the close button
             guard tabs.tabs.contains(where: { $0.id == tab.id }) else { return }
             tabs.selectedID = tab.id
         })
@@ -309,15 +313,15 @@ private struct TabChip: View {
     }
 }
 
-/// Мост между SwiftUI и панелью (скрыть/закрепить) — чтобы вью не знали про AppKit-окно.
+/// Bridge between SwiftUI and the panel (hide/pin) — so views don't know about the AppKit window.
 final class PanelBridge: ObservableObject {
     static let shared = PanelBridge()
     @Published var pinned = false
-    /// Срабатывает при каждом показе панели — домашняя вкладка ставит фокус в поле ввода.
+    /// Fires on every panel show — the home tab puts focus into the input field.
     let panelShown = PassthroughSubject<Void, Never>()
-    /// true, пока где-то идёт инлайн-переименование — спотлайт-навигация не трогает клавиши.
+    /// true while an inline rename is in progress somewhere — spotlight navigation leaves the keys alone.
     var editingText = false
-    /// true, пока открыт системный диалог (выбор папки) — панель не должна прятаться.
+    /// true while a system dialog (folder picker) is open — the panel must not hide.
     var suppressHide = false
     var hideAction: (() -> Void)?
     var showAction: (() -> Void)?

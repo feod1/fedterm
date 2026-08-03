@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// Что можно выбрать в спотлайт-списке.
+/// What can be selected in the spotlight list.
 enum HomeItem: Identifiable {
-    case plainTerminal                    // пустой терминал с шеллом
-    case runQuery(String)                 // выполнить введённый текст как команду
-    case sshQuery(SSHTarget)              // введённое похоже на user@host — сразу ssh
-    case claudeFolder(String)             // введён абсолютный путь к папке — открыть Claude
-    case favorite(FavoriteCommand)        // избранная команда (звёздочка)
+    case plainTerminal                    // empty terminal with a shell
+    case runQuery(String)                 // run the typed text as a command
+    case sshQuery(SSHTarget)              // input looks like user@host — ssh right away
+    case claudeFolder(String)             // an absolute folder path was typed — open Claude
+    case favorite(FavoriteCommand)        // favorite command (star)
     case pinned(SSHTarget)
     case recentSSH(SSHTarget)
     case recentCommand(CommandRecord)
@@ -26,7 +26,7 @@ enum HomeItem: Identifiable {
     }
 }
 
-/// Спотлайт-домашняя: большое поле ввода, быстрые действия, история за час.
+/// Spotlight home: big input field, quick actions, the last hour's history.
 struct HomeView: View {
     let tab: Tab
 
@@ -76,14 +76,14 @@ struct HomeView: View {
         }
         .onDisappear { removeKeyMonitor() }
         .onReceive(PanelBridge.shared.panelShown) { _ in
-            // панель показали хоткеем — сразу фокус в поле ввода
+            // the panel was shown via hotkey — focus the input field right away
             guard tabs.selectedTab?.id == tab.id else { return }
             DispatchQueue.main.async { fieldFocused = true }
         }
         .onChange(of: query) { _ in selectedIndex = 0 }
     }
 
-    // MARK: - Поле ввода
+    // MARK: - Input field
 
     private var searchField: some View {
         HStack(spacing: 12) {
@@ -105,13 +105,13 @@ struct HomeView: View {
         .padding(.vertical, 14)
     }
 
-    // MARK: - Список
+    // MARK: - List
 
     private var visibleItems: [HomeItem] {
         var items: [HomeItem] = []
         let q = query.trimmingCharacters(in: .whitespaces)
         if !q.isEmpty {
-            // абсолютный путь к папке (из WebStorm и т.п.) → открыть Claude Code в ней
+            // absolute folder path (from WebStorm etc.) → open Claude Code in it
             if q.hasPrefix("/") || q.hasPrefix("~") {
                 let expanded = NSString(string: q).expandingTildeInPath
                 var isDir: ObjCBool = false
@@ -119,7 +119,7 @@ struct HomeView: View {
                     items.append(.claudeFolder(expanded))
                 }
             }
-            // «ssh user@host» парсим как есть, «user@host» — дописываем ssh
+            // "ssh user@host" is parsed as-is, "user@host" — we prepend ssh
             let sshInput = (q.hasPrefix("ssh ") || q.hasPrefix("ssh://")) ? q : "ssh \(q)"
             var sshTarget: SSHTarget?
             if q.contains("@") || q.contains(".") || q.hasPrefix("ssh ") {
@@ -128,7 +128,7 @@ struct HomeView: View {
             if let target = sshTarget {
                 items.append(.sshQuery(target))
             }
-            // не дублируем: если введённое — та же ssh-команда, «Выполнить…» не нужно
+            // no duplicates: if the input is the same ssh command, "Run…" isn't needed
             if sshTarget == nil || !q.hasPrefix("ssh") {
                 items.append(.runQuery(q))
             }
@@ -145,8 +145,8 @@ struct HomeView: View {
                 .filter { target in matches(target, ql) && !pins.isPinned(target) }
                 .map { HomeItem.recentSSH($0) }
 
-            // фаззи-поиск по истории команд: подсеквенция с оценкой,
-            // без дублей и без команд, уже показанных в избранном
+            // fuzzy search over command history: scored subsequence match,
+            // no duplicates and no commands already shown among favorites
             let favCmds = Set(matchedFavs.map(\.command))
             var seenCmds = Set<String>()
             var scored: [(CommandRecord, Int)] = []
@@ -173,15 +173,15 @@ struct HomeView: View {
         target.displayTarget.lowercased().contains(q) || (target.label?.lowercased().contains(q) ?? false)
     }
 
-    /// Видимая часть истории — тоже участвует в стрелочной навигации
-    /// (индексы продолжаются после visibleItems). С дедупом внутри временных групп.
+    /// The visible slice of history — also takes part in arrow-key navigation
+    /// (indexes continue after visibleItems). Deduped within time groups.
     private var historyItems: [CommandRecord] {
         guard query.isEmpty else { return [] }
         return Array(dedupHistory(history.recentCommands(limit: 200)).prefix(historyVisible))
     }
 
-    /// Фаззи-матч: буквы запроса встречаются в строке по порядку.
-    /// Очки выше за префикс, компактность и раннее вхождение; nil — не совпало.
+    /// Fuzzy match: the query's letters occur in the string in order.
+    /// Higher score for a prefix, compactness, and an early match; nil — no match.
     static func fuzzyScore(_ query: String, _ text: String) -> Int? {
         guard !query.isEmpty else { return 0 }
         let q = Array(query), t = Array(text)
@@ -198,8 +198,8 @@ struct HomeView: View {
         guard qi == q.count else { return nil }
         var score = 100
         let gaps = last - first + 1 - q.count
-        score -= min(50, gaps * 3)     // разрывы между буквами
-        score -= min(30, first)        // чем раньше начало — тем лучше
+        score -= min(50, gaps * 3)     // gaps between letters
+        score -= min(30, first)        // the earlier the start — the better
         if text.hasPrefix(query) { score += 40 }
         return score
     }
@@ -237,7 +237,7 @@ struct HomeView: View {
         }
     }
 
-    /// Заголовок секции перед первым элементом каждого типа (только при пустом поиске).
+    /// Section header before the first item of each kind (only with an empty search).
     @ViewBuilder
     private func sectionHeaderIfNeeded(_ items: [HomeItem], _ index: Int) -> some View {
         if isFirstOfKind(items, index) {
@@ -280,7 +280,7 @@ struct HomeView: View {
         }
     }
 
-    /// Переименование: ssh-пины и избранные команды.
+    /// Renaming: ssh pins and favorite commands.
     private func renameAction(for item: HomeItem) -> ((String?) -> Void)? {
         switch item {
         case .pinned(let target):
@@ -292,7 +292,7 @@ struct HomeView: View {
         }
     }
 
-    /// Звёздочка: добавить/убрать команду из избранного.
+    /// Star: add/remove a command from favorites.
     private func starAction(for item: HomeItem) -> (() -> Void)? {
         switch item {
         case .favorite(let fav):
@@ -307,7 +307,7 @@ struct HomeView: View {
         }
     }
 
-    /// «Заклёпка»: открывать команду при запуске аппки (только для избранных).
+    /// "Bolt": open the command on app launch (favorites only).
     private func autorunAction(for item: HomeItem) -> (() -> Void)? {
         guard case .favorite(let fav) = item else { return nil }
         return { favorites.toggleAutorun(fav.id) }
@@ -322,7 +322,7 @@ struct HomeView: View {
             .padding(.bottom, 2)
     }
 
-    // MARK: - История команд (полный список, свежие сверху, порциями)
+    // MARK: - Command history (full list, freshest first, in pages)
 
     @ViewBuilder
     private var hourSummary: some View {
@@ -330,7 +330,7 @@ struct HomeView: View {
         let total = dedupHistory(history.recentCommands(limit: 200)).count
         if total > 0 {
             sectionHeader(L.historySection(total))
-            // чипы за последний час: ssh-хосты кликабельны, остальное — счётчики
+            // last hour's chips: ssh hosts are clickable, the rest are counters
             if !summary.isEmpty {
                 FlowChips(summary: summary) { target in
                     tabs.openTerminal(in: tab, ssh: target)
@@ -342,7 +342,7 @@ struct HomeView: View {
             let hist = historyItems
             let base = visibleItems.count
             ForEach(Array(hist.enumerated()), id: \.element.id) { idx, rec in
-                // заголовок временно́й группы — при смене группы
+                // time-group header — when the group changes
                 if idx == 0 || bucketIndex(rec.ts) != bucketIndex(hist[idx - 1].ts) {
                     Text(Self.bucketLabels[bucketIndex(rec.ts)].uppercased())
                         .font(.system(size: 9, weight: .bold))
@@ -389,7 +389,7 @@ struct HomeView: View {
         }
     }
 
-    /// Одна и та же команда внутри временно́й группы показывается один раз (самый свежий запуск).
+    /// The same command within a time group is shown once (the most recent run).
     private func dedupHistory(_ items: [CommandRecord]) -> [CommandRecord] {
         var seen = Set<String>()
         return items.filter { rec in
@@ -442,13 +442,13 @@ struct HomeView: View {
         .contentShape(Rectangle())
     }
 
-    // MARK: - Действия
+    // MARK: - Actions
 
     private func execute(at index: Int) {
         guard !PanelBridge.shared.editingText else { return }
         let items = visibleItems
         guard index >= 0, index < items.count else {
-            // индексы дальше списка — это строки истории
+            // indexes past the list are history rows
             let hist = historyItems
             let hIdx = index - items.count
             if hIdx >= 0, hIdx < hist.count, let cmd = hist[hIdx].cmd {
@@ -476,7 +476,7 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Клавиатура (стрелки/enter/esc как в спотлайте)
+    // MARK: - Keyboard (arrows/enter/esc, spotlight-style)
 
     private func installKeyMonitor() {
         removeKeyMonitor()
@@ -484,7 +484,7 @@ struct HomeView: View {
             guard tabs.selectedTab?.id == tab.id, tab.isHome,
                   !PanelBridge.shared.editingText else { return event }
             switch event.keyCode {
-            case 125: // down — сквозь быстрые действия и дальше по истории
+            case 125: // down — through the quick actions and on into history
                 let total = visibleItems.count + historyItems.count
                 selectedIndex = min(selectedIndex + 1, max(0, total - 1))
                 return nil
@@ -515,7 +515,7 @@ struct HomeView: View {
     }
 }
 
-/// Строка результата в спотлайт-списке.
+/// A result row in the spotlight list.
 private struct HomeRow: View {
     let item: HomeItem
     let isSelected: Bool
@@ -585,7 +585,7 @@ private struct HomeRow: View {
 
     @ViewBuilder
     private var accessories: some View {
-        // автозапуск («заклёпка») — только у избранных
+        // autorun ("bolt") — favorites only
         if case .favorite(let fav) = item, let onAutorun {
             Button(action: onAutorun) {
                 Image(systemName: fav.autorun ? "bolt.fill" : "bolt")
@@ -699,7 +699,7 @@ private struct HomeRow: View {
     }
 }
 
-/// Чипы сводки: ssh-хосты кликабельны (реконнект), остальное — счётчики.
+/// Summary chips: ssh hosts are clickable (reconnect), the rest are counters.
 private struct FlowChips: View {
     let summary: ActivitySummary
     let onSSH: (SSHTarget) -> Void

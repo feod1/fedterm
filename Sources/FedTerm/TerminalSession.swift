@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import SwiftTerm
 
-/// Сабкласс терминала: тема, Cmd+click по URL и путям (как в Terminal.app).
+/// Terminal subclass: theme, Cmd+click on URLs and paths (like Terminal.app).
 final class FedTermView: LocalProcessTerminalView {
     private var appearanceObserver: NSObjectProtocol?
 
@@ -24,8 +24,8 @@ final class FedTermView: LocalProcessTerminalView {
         }
     }
 
-    /// Тема и шрифт из настроек; фон полупрозрачный — под панелью блюр,
-    /// получается «стеклянный» терминал.
+    /// Theme and font from settings; the background is semi-transparent — with the
+    /// blur behind the panel this gives a "glassy" terminal.
     private func applyAppearance() {
         let settings = SettingsStore.shared
         let theme = settings.theme
@@ -39,13 +39,13 @@ final class FedTermView: LocalProcessTerminalView {
         needsDisplay = true
     }
 
-    /// Клик/драг по терминалу — это выделение текста, а не перенос окна.
-    /// Окно таскается за таб-бар, верх и края, но не за область терминала.
+    /// Click/drag on the terminal means text selection, not window dragging.
+    /// The window is dragged by the tab bar, top, and edges, but not by the terminal area.
     override var mouseDownCanMoveWindow: Bool { false }
 
-    /// SwiftTerm резервирует справа полосу под скроллбар (~15px) даже в overlay-режиме —
-    /// из-за неё щель справа (заметно в mc). Прячем скроллер: резерв обнуляется,
-    /// колонки занимают всю ширину. Скролл колёсиком/трекпадом работает как раньше.
+    /// SwiftTerm reserves a strip on the right for the scrollbar (~15px) even in overlay mode —
+    /// it causes a gap on the right (noticeable in mc). Hiding the scroller zeroes the reserve,
+    /// so columns take the full width. Wheel/trackpad scrolling works as before.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         hideScroller()
@@ -58,7 +58,7 @@ final class FedTermView: LocalProcessTerminalView {
         needsLayout = true
     }
 
-    // MARK: - Cmd+click: ссылки и пути
+    // MARK: - Cmd+click: links and paths
 
     override func mouseDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command),
@@ -69,17 +69,17 @@ final class FedTermView: LocalProcessTerminalView {
         super.mouseDown(with: event)
     }
 
-    /// OSC 8 — «настоящие» гиперссылки из вывода программ.
+    /// OSC 8 — "real" hyperlinks from program output.
     override func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
         if let url = URL(string: link) { NSWorkspace.shared.open(url) }
     }
 
-    /// Достаёт слово под курсором мыши из буфера терминала.
+    /// Extracts the word under the mouse cursor from the terminal buffer.
     private func tokenAt(event: NSEvent) -> String? {
         let terminal = getTerminal()
         let local = convert(event.locationInWindow, from: nil)
         guard terminal.cols > 0, terminal.rows > 0, bounds.width > 0, bounds.height > 0 else { return nil }
-        // cellDimension у SwiftTerm внутренний — оцениваем по размеру вью
+        // SwiftTerm's cellDimension is internal — estimate from the view size
         let cellWidth = bounds.width / CGFloat(terminal.cols)
         let cellHeight = bounds.height / CGFloat(terminal.rows)
         let col = max(0, min(terminal.cols - 1, Int(local.x / cellWidth)))
@@ -104,14 +104,14 @@ final class FedTermView: LocalProcessTerminalView {
         if token.hasPrefix("http://") || token.hasPrefix("https://") || token.contains("://") {
             if let url = URL(string: token) { NSWorkspace.shared.open(url); return }
         }
-        // путь: /abs, ~/…, ./rel — раскрываем и показываем/открываем
+        // path: /abs, ~/…, ./rel — expand and reveal/open
         var path = token
         if path.hasPrefix("~") {
             path = NSString(string: path).expandingTildeInPath
         } else if path.hasPrefix("./") || !path.hasPrefix("/") {
-            // относительный путь — пробуем от текущей директории процесса неточно; пропускаем, если не абсолютный
+            // relative path — resolving against the process cwd is unreliable; skip if not absolute
             guard path.hasPrefix("./") else {
-                // домен без схемы: что-то похожее на example.com/…
+                // schemeless domain: something like example.com/…
                 if token.contains(".") && !token.contains("/") || token.hasPrefix("www.") {
                     if let url = URL(string: "https://\(token)") { NSWorkspace.shared.open(url) }
                 }
@@ -126,8 +126,8 @@ final class FedTermView: LocalProcessTerminalView {
     }
 }
 
-/// Контроллер одной терминальной сессии: владеет NSView, запускает zsh,
-/// сообщает наверх про смену заголовка/каталога/завершение процесса.
+/// Controller for a single terminal session: owns the NSView, launches zsh,
+/// reports title/directory changes and process termination upward.
 final class TerminalSessionController: NSObject, ObservableObject, LocalProcessTerminalViewDelegate {
     let sessionID = UUID().uuidString
     let view: FedTermView
@@ -136,25 +136,25 @@ final class TerminalSessionController: NSObject, ObservableObject, LocalProcessT
     @Published var currentDirectory: String?
     @Published var terminated = false
 
-    /// Если таб открыт как ssh-подключение — его цель (для восстановления и заголовка).
+    /// If the tab was opened as an ssh connection — its target (for restore and title).
     var sshTarget: SSHTarget?
 
-    /// Если таб открыт как сессия Claude Code — запись и момент запуска (для захвата session id).
+    /// If the tab was opened as a Claude Code session — its record and launch time (to capture the session id).
     var claudeRecordID: UUID?
     var claudeLaunchedAt: Date?
-    /// Историческая сессия клода, открытая напрямую (без именованной записи).
+    /// A historical Claude session opened directly (without a named record).
     var claudeSessionID: String?
-    /// Папка, в которой стартовал шелл (для восстановления, если OSC7 не пришёл).
+    /// Directory the shell started in (for restore if no OSC7 arrived).
     let startDirectory: String
 
-    /// PID шелла этой вкладки — по нему находим запущенный внутри клод.
+    /// PID of this tab's shell — used to find a Claude instance running inside it.
     var shellPID: pid_t { view.process.shellPid }
 
     var onTitleChange: (() -> Void)?
-    /// Вызывается при завершении процесса шелла — вкладка закрывается.
+    /// Called when the shell process exits — the tab closes.
     var onTerminated: (() -> Void)?
-    /// Вкладка создана автозапуском избранной команды — не сохраняется в стейт
-    /// (при следующем старте автозапуск создаст её заново).
+    /// Tab created by autorun of a favorite command — not saved to state
+    /// (autorun will recreate it on the next launch).
     var isAutorun = false
 
     init(initialDirectory: String? = nil, autorunCommand: String? = nil) {
@@ -175,7 +175,7 @@ final class TerminalSessionController: NSObject, ObservableObject, LocalProcessT
         )
 
         if let cmd = autorunCommand {
-            // даём шеллу подняться и «печатаем» команду — так её запишет preexec-хук
+            // let the shell start up, then "type" the command — so the preexec hook records it
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
                 self?.view.send(txt: cmd + "\n")
             }
@@ -220,7 +220,7 @@ final class TerminalSessionController: NSObject, ObservableObject, LocalProcessT
     }
 }
 
-/// Мост в SwiftUI: показывает уже существующий NSView контроллера.
+/// SwiftUI bridge: displays the controller's already existing NSView.
 struct TerminalHostView: NSViewRepresentable {
     let controller: TerminalSessionController
 

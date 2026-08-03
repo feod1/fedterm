@@ -1,8 +1,8 @@
 import AppKit
 import Combine
 
-/// Настройки внешнего вида: тема терминала, шрифт, размер. Хранятся в UserDefaults,
-/// изменения применяются к открытым терминалам мгновенно (через нотификацию).
+/// Appearance settings: terminal theme, font, size. Stored in UserDefaults,
+/// changes apply to open terminals instantly (via a notification).
 final class SettingsStore: ObservableObject {
     static let shared = SettingsStore()
     static let appearanceChanged = Notification.Name("FedTermAppearanceChanged")
@@ -17,14 +17,14 @@ final class SettingsStore: ObservableObject {
     @Published var fontSize: Double {
         didSet { persistAndNotify() }
     }
-    /// Затемнение стеклянной части окна (0 — чистое стекло, 0.95 — почти непрозрачно).
-    /// Спасает на светлых обоях, где блюр выглядит белёсо.
+    /// Dimming of the window's glass part (0 — pure glass, 0.95 — almost opaque).
+    /// Helps on light wallpapers where the blur looks washed out.
     @Published var windowDim: Double {
         didSet { persistAndNotify() }
     }
 
-    /// Тонкие штрихи (как в iTerm): отключает маковский font smoothing,
-    /// который «жирнит» текст. Применяется после перезапуска аппки.
+    /// Thin strokes (like in iTerm): disables macOS font smoothing,
+    /// which makes text look bolder. Takes effect after an app restart.
     @Published var thinStrokes: Bool {
         didSet {
             if thinStrokes {
@@ -35,13 +35,19 @@ final class SettingsStore: ObservableObject {
             persistAndNotify()
         }
     }
-    /// Толщина шрифта терминала: regular / medium / semibold / bold.
+    /// Terminal font weight: regular / medium / semibold / bold.
     @Published var fontWeight: String {
         didSet { persistAndNotify() }
     }
 
-    /// Глобальный хоткей показа окна: код клавиши и карбоновские модификаторы.
-    /// Само сочетание регистрирует HotkeyManager — здесь только хранение.
+    /// Interface language: "auto" follows the system, "ru"/"en" force one.
+    /// L reads the value once at launch, so a change needs an app restart.
+    @Published var appLanguage: String {
+        didSet { UserDefaults.standard.set(appLanguage, forKey: "appLanguage") }
+    }
+
+    /// Global hotkey to show the window: key code and Carbon modifiers.
+    /// HotkeyManager registers the shortcut itself — this is storage only.
     @Published private(set) var hotKeyCode: UInt32
     @Published private(set) var hotKeyModifiers: UInt32
 
@@ -53,8 +59,8 @@ final class SettingsStore: ObservableObject {
         hotKeyCode == HotkeyManager.defaultKeyCode && hotKeyModifiers == HotkeyManager.defaultModifiers
     }
 
-    /// Пробует занять сочетание. false — система не отдала (занято другим приложением),
-    /// тогда настройки не меняются.
+    /// Tries to claim the shortcut. false — the system refused (taken by another app),
+    /// in which case the settings stay unchanged.
     func setHotKey(keyCode: UInt32, modifiers: UInt32) -> Bool {
         guard HotkeyManager.shared.register(keyCode: keyCode, modifiers: modifiers) else { return false }
         hotKeyCode = keyCode
@@ -88,14 +94,14 @@ final class SettingsStore: ObservableObject {
         }
         var font = NSFont(name: fontName, size: fontSize)
             ?? .monospacedSystemFont(ofSize: fontSize, weight: weightValue)
-        // для сторонних шрифтов «полужирный/жирный» берём через bold-трейт
+        // for third-party fonts, get "semibold/bold" via the bold trait
         if fontWeight == "semibold" || fontWeight == "bold" {
             font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
         }
         return font
     }
 
-    /// Моноширинные шрифты для выбора: системный + установленные из известного списка.
+    /// Monospaced fonts to choose from: the system one + installed ones from a known list.
     var availableFonts: [(id: String, title: String)] {
         var result: [(String, String)] = [("system", L.systemFont)]
         let candidates = [
@@ -118,6 +124,7 @@ final class SettingsStore: ObservableObject {
         fontSize = size >= 9 && size <= 28 ? size : 13
         windowDim = defaults.object(forKey: "windowDim") as? Double ?? 0.25
         fontWeight = defaults.string(forKey: "fontWeight") ?? "regular"
+        appLanguage = defaults.string(forKey: "appLanguage") ?? "auto"
         thinStrokes = defaults.object(forKey: "AppleFontSmoothing") != nil
         let savedCode = defaults.object(forKey: "hotKeyCode") as? Int
         let savedModifiers = defaults.object(forKey: "hotKeyModifiers") as? Int

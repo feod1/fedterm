@@ -2,9 +2,9 @@ import SwiftUI
 import AppKit
 import Carbon.HIToolbox
 
-/// Поле записи глобального хоткея: клик — и следующее нажатое сочетание становится хоткеем.
-/// Пока идёт запись, системная регистрация снята, иначе Carbon перехватил бы нажатие
-/// раньше, чем его увидит монитор событий.
+/// Global hotkey recording field: click, and the next pressed shortcut becomes the hotkey.
+/// While recording, the system registration is removed, otherwise Carbon would intercept
+/// the keystroke before the event monitor sees it.
 struct HotkeyRecorderView: View {
     @ObservedObject private var settings = SettingsStore.shared
 
@@ -45,7 +45,7 @@ struct HotkeyRecorderView: View {
         .onDisappear { stopRecording(restore: true) }
     }
 
-    // MARK: - Капсула с сочетанием
+    // MARK: - Shortcut capsule
 
     private var capsule: some View {
         HStack(spacing: 6) {
@@ -82,21 +82,21 @@ struct HotkeyRecorderView: View {
         return held.isEmpty ? L.hotkeyPressPrompt : held + "…"
     }
 
-    // MARK: - Запись
+    // MARK: - Recording
 
     private func startRecording() {
         guard !recording else { return }
         recording = true
         message = nil
         liveModifiers = 0
-        // навигация спотлайта и вкладочные шорткаты не должны перехватывать клавиши
+        // spotlight navigation and tab shortcuts must not intercept keystrokes
         PanelBridge.shared.editingText = true
         HotkeyManager.shared.suspend()
         withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pulse = true }
 
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             handle(event)
-            return nil // ни одно нажатие не уходит дальше, пока идёт запись
+            return nil // no keystroke goes any further while recording
         }
     }
 
@@ -108,7 +108,7 @@ struct HotkeyRecorderView: View {
         let modifiers = HotkeyFormatter.carbonFlags(from: event.modifierFlags)
         let code = UInt32(event.keyCode)
 
-        // Esc — отмена, ⌫ — вернуть значение по умолчанию
+        // Esc — cancel, ⌫ — restore the default
         if modifiers == 0, code == UInt32(kVK_Escape) {
             stopRecording(restore: true)
             return
@@ -119,8 +119,8 @@ struct HotkeyRecorderView: View {
             show(L.hotkeyReset, isError: false)
             return
         }
-        // одиночная клавиша отобрала бы ввод у всех приложений — просим модификатор
-        // (кроме F-клавиш, их не жалко)
+        // a single key would steal input from every app — ask for a modifier
+        // (except F-keys, those are fine to claim)
         guard modifiers != 0 || HotkeyFormatter.isStandaloneSafe(keyCode: code) else {
             show(L.hotkeyNeedsModifier, isError: true)
             return

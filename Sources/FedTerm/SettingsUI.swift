@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Шестерёнка (правый верхний угол) → поповер с настройками темы и шрифта.
+/// Gear icon (top right corner) → popover with theme and font settings.
 struct SettingsButton: View {
     @State private var showPopover = false
 
@@ -50,7 +50,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                // мини-превью палитры
+                // mini palette preview
                 HStack(spacing: 3) {
                     ForEach(Array(settings.theme.ansi.prefix(8).enumerated()), id: \.offset) { _, rgb in
                         RoundedRectangle(cornerRadius: 2)
@@ -64,7 +64,7 @@ struct SettingsView: View {
                         .fill(Color(nsColor: settings.theme.background))
                 )
 
-                // кастомные темы: создать из текущей / редактировать / удалить
+                // custom themes: create from current / edit / delete
                 HStack(spacing: 10) {
                     Button {
                         dismiss()
@@ -222,8 +222,8 @@ struct SettingsView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
                 } else {
-                    // конструктор — отдельным оверлеем поверх окна:
-                    // он переживает системные диалоги (выбор папки/файла)
+                    // the builder is a separate overlay on top of the window:
+                    // it survives system dialogs (folder/file pickers)
                     Button {
                         dismiss()
                         automations.editorVisible = true
@@ -249,6 +249,48 @@ struct SettingsView: View {
                 Text(L.automationHint)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L.languageTitle)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                Picker("", selection: $settings.appLanguage) {
+                    Text(L.languageAuto).tag("auto")
+                    Text("Русский").tag("ru")
+                    Text("English").tag("en")
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                Text(L.needsRestart)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.tertiary)
+            }
+
+            // Read-only hotkey reference; the toggle shortcut above is the only one users can change
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L.hotkeysTitle)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                ForEach([
+                    ("⌘T / ⌘W", L.hkTabs),
+                    ("⌘1–⌘9", L.hkSwitchTab),
+                    ("⌘[ / ⌘]", L.hkPrevNextTab),
+                    ("⌘E", L.hkRecentTabs),
+                    ("⌘+ / ⌘− / ⌘0", L.hkFontSize),
+                    ("⌘\(L.hkClick)", L.hkOpenLink),
+                    ("⌃C", L.hkInterrupt),
+                ], id: \.0) { keys, title in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(keys)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 90, alignment: .leading)
+                        Text(title)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
             }
         }
         .padding(16)

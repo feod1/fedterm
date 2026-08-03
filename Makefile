@@ -18,7 +18,7 @@ bundle: build
 run: bundle
 	open $(APP)
 
-# быстрый дев-запуск без бандла
+# quick dev run without the bundle
 dev:
 	swift run
 

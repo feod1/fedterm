@@ -1,8 +1,8 @@
 import SwiftUI
 import AppKit
 
-/// Оверлей-редактор кастомной темы: имя, основные цвета, 16 ANSI, прозрачность.
-/// Живёт поверх окна, на время редактирования окно закреплено.
+/// Custom theme editor overlay: name, base colors, 16 ANSI, opacity.
+/// Lives on top of the window; the window is pinned while editing.
 struct ThemeEditorOverlay: View {
     @ObservedObject private var store = CustomThemesStore.shared
 
@@ -75,7 +75,7 @@ struct ThemeEditorOverlay: View {
                         .frame(width: 34)
                 }
 
-                // живое превью
+                // live preview
                 HStack(spacing: 2) {
                     ForEach(0..<16, id: \.self) { i in
                         Text("A")

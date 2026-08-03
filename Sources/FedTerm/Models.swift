@@ -1,18 +1,18 @@
 import Foundation
 
-/// Одна выполненная команда, записанная preexec-хуком zsh (или событие start/end от приложения).
+/// A single executed command recorded by the zsh preexec hook (or a start/end event from the app).
 struct CommandRecord: Codable, Identifiable, Hashable {
     var ts: Double
     var sid: String
     var cwd: String?
     var cmd: String?
-    var event: String?   // "start" | "end" | nil (обычная команда)
+    var event: String?   // "start" | "end" | nil (regular command)
 
     var id: String { "\(sid)-\(ts)-\(cmd ?? event ?? "")" }
     var date: Date { Date(timeIntervalSince1970: ts) }
 }
 
-/// SSH-цель: user@host[:port], извлечённая из команды.
+/// SSH target: user@host[:port], extracted from a command.
 struct SSHTarget: Codable, Hashable, Identifiable {
     var user: String?
     var host: String
@@ -21,7 +21,7 @@ struct SSHTarget: Codable, Hashable, Identifiable {
 
     var id: String { displayTarget }
 
-    /// user@host — то, что подставляется в команду ssh.
+    /// user@host — what gets substituted into the ssh command.
     var connectString: String {
         (user.map { "\($0)@" } ?? "") + host
     }
@@ -30,7 +30,7 @@ struct SSHTarget: Codable, Hashable, Identifiable {
         connectString + (port.map { ":\($0)" } ?? "")
     }
 
-    /// Полная команда для запуска.
+    /// Full command to run.
     var sshCommand: String {
         var parts = ["ssh"]
         if let port { parts.append("-p \(port)") }
@@ -38,13 +38,13 @@ struct SSHTarget: Codable, Hashable, Identifiable {
         return parts.joined(separator: " ")
     }
 
-    /// Пытается распарсить ssh-команду и вытащить цель.
-    /// Понимает флаги с аргументами (-p, -i, -o, ...) и формы `ssh user@host`, `ssh host`.
+    /// Tries to parse an ssh command and extract the target.
+    /// Understands flags with arguments (-p, -i, -o, ...) and the forms `ssh user@host`, `ssh host`.
     static func parse(from command: String) -> SSHTarget? {
         let trimmed = command.trimmingCharacters(in: .whitespaces)
         var tokens = trimmed.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
         guard let first = tokens.first else { return nil }
-        // поддержим и `autossh`, и command chains вида `ssh host` в начале строки
+        // also support `autossh` and command chains like `ssh host` at the start of the line
         guard first == "ssh" || first.hasSuffix("/ssh") else { return nil }
         tokens.removeFirst()
 
@@ -67,12 +67,12 @@ struct SSHTarget: Codable, Hashable, Identifiable {
                     if tok == "-l" { login = value }
                     i += 2
                 } else {
-                    i += 1 // одиночный флаг (-A, -v, -T, …)
+                    i += 1 // standalone flag (-A, -v, -T, …)
                 }
                 continue
             }
             target = tok
-            break // всё после цели — удалённая команда, не трогаем
+            break // everything after the target is the remote command, leave it alone
         }
 
         guard var host = target, !host.isEmpty else { return nil }
@@ -98,7 +98,7 @@ struct SSHTarget: Codable, Hashable, Identifiable {
     }
 }
 
-/// Сессия терминала: все команды с одним sid.
+/// Terminal session: all commands sharing one sid.
 struct SessionSummary: Identifiable {
     var sid: String
     var records: [CommandRecord]
@@ -112,7 +112,7 @@ struct SessionSummary: Identifiable {
     }
 }
 
-/// Классификация команды по ключевому слову — для краткой сводки «что было за час».
+/// Keyword-based command classification — for the brief "what happened this hour" summary.
 enum CommandKind: String, CaseIterable {
     case ssh, git, docker, kubernetes, node, brew, files, editor, network, other
 
@@ -165,13 +165,13 @@ enum CommandKind: String, CaseIterable {
     }
 }
 
-/// Сводка активности за интервал (например, последний час).
+/// Activity summary for an interval (e.g. the last hour).
 struct ActivitySummary {
     var interval: TimeInterval
     var totalCommands: Int
-    var sshTargets: [SSHTarget]           // уникальные, в порядке последнего использования
+    var sshTargets: [SSHTarget]           // unique, ordered by most recent use
     var kindCounts: [(kind: CommandKind, count: Int)]
-    var recent: [CommandRecord]           // последние команды, свежие сверху
+    var recent: [CommandRecord]           // latest commands, newest first
 
     var isEmpty: Bool { totalCommands == 0 }
 }

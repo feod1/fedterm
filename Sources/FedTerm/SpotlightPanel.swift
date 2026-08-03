@@ -1,12 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// Плавающая панель в стиле Spotlight: блюр, скругления, без тайтлбара,
-/// всплывает на любом рабочем столе, прячется при потере фокуса (если не закреплена).
+/// Spotlight-style floating panel: blur, rounded corners, no title bar,
+/// pops up on any desktop, hides on focus loss (unless pinned).
 final class SpotlightPanel: NSPanel {
     init(contentView: NSView) {
-        // borderless: у titled-окна невидимый тайтлбар перехватывал drag
-        // в зоне таб-бара (перетаскивание вкладок таскало окно целиком)
+        // borderless: a titled window's invisible title bar intercepted drags
+        // in the tab bar area (dragging tabs moved the whole window)
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 780, height: 500),
             styleMask: [.borderless, .resizable],
@@ -17,17 +17,17 @@ final class SpotlightPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovableByWindowBackground = false // окно таскается только за drag-зону таб-бара
+        isMovableByWindowBackground = false // the window is dragged only by the tab bar's drag zone
         isOpaque = false
         backgroundColor = .clear
-        // системная тень borderless-окна рисует светлый 1px-ободок по контуру — отключаем
+        // the system shadow of a borderless window draws a light 1px rim along the edge — disable it
         hasShadow = false
         hidesOnDeactivate = false
         minSize = NSSize(width: 680, height: 420)
         animationBehavior = .utilityWindow
         setFrameAutosaveName("FedTermPanel")
 
-        // блюр-подложка как у спотлайта
+        // blur backdrop like Spotlight's
         let effect = NSVisualEffectView()
         effect.material = .hudWindow
         effect.blendingMode = .behindWindow
@@ -37,7 +37,7 @@ final class SpotlightPanel: NSPanel {
         effect.layer?.cornerCurve = .continuous
         effect.layer?.masksToBounds = true
 
-        // регулируемое затемнение поверх блюра — на светлых обоях стекло не белёсое
+        // adjustable dimming over the blur — the glass doesn't wash out on light wallpapers
         let dim = NSView()
         dim.wantsLayer = true
         dim.translatesAutoresizingMaskIntoConstraints = false
@@ -78,7 +78,7 @@ final class SpotlightPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    // MARK: - Запоминание позиции и размера
+    // MARK: - Remembering position and size
 
     private static let frameKey = "FedTermSavedFrame"
 
@@ -93,8 +93,8 @@ final class SpotlightPanel: NSPanel {
         return rect
     }
 
-    /// Показ: там, где пользователь оставил окно; если сохранённого фрейма нет
-    /// или он вне видимых экранов — по центру активного экрана (чуть выше середины, как Spotlight).
+    /// Show: where the user left the window; if there is no saved frame
+    /// or it is off all visible screens — centered on the active screen (slightly above middle, like Spotlight).
     func present() {
         if let saved = savedFrame,
            NSScreen.screens.contains(where: { $0.visibleFrame.intersects(saved) }) {

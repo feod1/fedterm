@@ -1,8 +1,8 @@
 import Foundation
 import Combine
 
-/// Сессия Claude Code, привязанная к проекту: имя, папка, id сессии клода.
-/// Хранится навсегда (до ручного удаления) и переживает перезапуски.
+/// A Claude Code session tied to a project: name, folder, Claude session id.
+/// Stored forever (until deleted manually) and survives restarts.
 struct ClaudeSessionRecord: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String
@@ -22,29 +22,29 @@ extension AppPaths {
     }
 }
 
-/// Сессия Claude Code, найденная на диске (в ~/.claude/projects) — всё, что когда-либо было.
+/// A Claude Code session found on disk (in ~/.claude/projects) — everything that ever existed.
 struct DiscoveredSession: Identifiable, Hashable {
-    var id: String          // uuid сессии (= имя jsonl-файла)
-    var path: String        // cwd проекта (вычитан из jsonl)
+    var id: String          // session uuid (= jsonl file name)
+    var path: String        // project cwd (read from the jsonl)
     var lastModified: Date
-    var title: String       // саммари или первое сообщение пользователя
+    var title: String       // summary or the first user message
 }
 
 final class ClaudeSessionsStore: ObservableObject {
     @Published private(set) var sessions: [ClaudeSessionRecord] = []
-    /// Все сессии с диска, свежие сверху.
+    /// All sessions from disk, freshest first.
     @Published private(set) var discovered: [DiscoveredSession] = []
-    /// Папка, ожидающая имени (после drop или ввода пути) — открывает оверлей.
+    /// Folder waiting for a name (after a drop or a typed path) — opens the overlay.
     @Published var pendingFolder: URL?
 
-    /// Персистентный индекс заголовков: перечитываем jsonl только если файл изменился.
+    /// Persistent title index: re-read the jsonl only if the file changed.
     private struct IndexEntry: Codable {
         var mtime: TimeInterval
         var title: String
         var cwd: String
     }
 
-    private var titleCache: [String: IndexEntry] = [:]   // только на scanQueue
+    private var titleCache: [String: IndexEntry] = [:]   // scanQueue only
     private var indexLoaded = false
     private var indexDirty = false
     private let scanQueue = DispatchQueue(label: "fedterm.claude.scan")
@@ -53,8 +53,8 @@ final class ClaudeSessionsStore: ObservableObject {
 
     // MARK: - CRUD
 
-    /// Session id мы задаём САМИ при создании записи (claude --session-id) —
-    /// никакого угадывания и захвата, привязка железная с первого запуска.
+    /// We assign the session id OURSELVES when creating a record (claude --session-id) —
+    /// no guessing or capturing, the binding is rock-solid from the very first launch.
     @discardableResult
     func create(name: String, path: String, sessionID: String? = nil) -> ClaudeSessionRecord {
         let sid = sessionID ?? UUID().uuidString.lowercased()
@@ -64,10 +64,10 @@ final class ClaudeSessionsStore: ObservableObject {
         return rec
     }
 
-    /// Команда запуска записи: если сессия уже есть на диске — резюмим,
-    /// если нет (первый запуск или первый не успел записаться) — создаём с нашим id.
+    /// Launch command for a record: if the session already exists on disk — resume it,
+    /// if not (first launch, or the first one didn't get written) — create it with our id.
     func launchCommand(for record: ClaudeSessionRecord) -> String {
-        guard let sid = record.claudeSessionID else { return "claude" } // легаси-записи
+        guard let sid = record.claudeSessionID else { return "claude" } // legacy records
         return Self.sessionFileExists(id: sid, projectPath: record.path)
             ? "claude --resume \(sid)"
             : "claude --session-id \(sid)"
@@ -83,7 +83,7 @@ final class ClaudeSessionsStore: ObservableObject {
         return false
     }
 
-    /// Именованная запись, привязанная к этой сессии клода (если есть).
+    /// The named record bound to this Claude session (if any).
     func savedRecord(sessionID: String) -> ClaudeSessionRecord? {
         sessions.first { $0.claudeSessionID == sessionID }
     }
@@ -105,7 +105,7 @@ final class ClaudeSessionsStore: ObservableObject {
         save()
     }
 
-    /// Сессии, разложенные по папкам-проектам (свежие проекты сверху).
+    /// Sessions grouped by project folder (freshest projects first).
     var byProject: [(path: String, items: [ClaudeSessionRecord])] {
         Dictionary(grouping: sessions, by: { $0.path })
             .map { (path: $0.key, items: $0.value.sorted { $0.lastUsedAt > $1.lastUsedAt }) }
@@ -129,9 +129,9 @@ final class ClaudeSessionsStore: ObservableObject {
         try? data.write(to: AppPaths.claudeSessionsFile, options: .atomic)
     }
 
-    // MARK: - Скан всей истории Claude Code на диске
+    // MARK: - Scanning the entire Claude Code history on disk
 
-    /// Пересканировать ~/.claude/projects (в фоне; результат прилетит в published discovered).
+    /// Rescan ~/.claude/projects (in the background; the result lands in the published discovered).
     func refreshDiscovered() {
         scanQueue.async { [weak self] in
             guard let self else { return }
@@ -140,7 +140,7 @@ final class ClaudeSessionsStore: ObservableObject {
         }
     }
 
-    /// Индексируем не больше стольки самых свежих сессий — старьё дальше не читаем.
+    /// Index at most this many of the freshest sessions — anything older isn't read.
     private static let indexLimit = 200
 
     private func scanDisk() -> [DiscoveredSession] {
@@ -150,7 +150,7 @@ final class ClaudeSessionsStore: ObservableObject {
             at: AppPaths.claudeProjectsDir, includingPropertiesForKeys: [.isDirectoryKey]
         ) else { return [] }
 
-        // 1) дешёвый проход: только пути и mtime, без чтения содержимого
+        // 1) cheap pass: only paths and mtimes, no reading of contents
         var candidates: [(file: URL, mtime: Date, dirName: String)] = []
         for dir in dirs {
             guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
@@ -164,7 +164,7 @@ final class ClaudeSessionsStore: ObservableObject {
             }
         }
 
-        // 2) берём только свежайшие indexLimit и парсим заголовки (с кэшем)
+        // 2) take only the freshest indexLimit and parse titles (with a cache)
         candidates.sort { $0.mtime > $1.mtime }
         let top = candidates.prefix(Self.indexLimit)
         var out: [DiscoveredSession] = []
@@ -176,7 +176,7 @@ final class ClaudeSessionsStore: ObservableObject {
             out.append(DiscoveredSession(id: sid, path: meta.cwd, lastModified: item.mtime, title: meta.title))
         }
 
-        // подчистить индекс от удалённых/выпавших за лимит файлов
+        // purge the index of deleted files and ones that fell past the limit
         let stale = titleCache.keys.filter { !seen.contains($0) }
         if !stale.isEmpty {
             for key in stale { titleCache.removeValue(forKey: key) }
@@ -202,7 +202,7 @@ final class ClaudeSessionsStore: ObservableObject {
         }
     }
 
-    /// Заголовок и cwd — из первых строк jsonl: summary-строка либо первое сообщение пользователя.
+    /// Title and cwd — from the first jsonl lines: the summary line or the first user message.
     private func titleAndCwd(for file: URL, mtime: Date, fallbackDir: String) -> (title: String, cwd: String) {
         if let cached = titleCache[file.path], abs(cached.mtime - mtime.timeIntervalSince1970) < 0.5 {
             return (cached.title, cached.cwd)
@@ -227,7 +227,7 @@ final class ClaudeSessionsStore: ObservableObject {
                         } else if let arr = msg["content"] as? [[String: Any]] {
                             candidate = arr.compactMap { $0["text"] as? String }.first
                         }
-                        // служебные сообщения (<command-name>… и т.п.) заголовком не считаем
+                        // service messages (<command-name>… etc.) don't count as a title
                         if let c = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
                            !c.isEmpty, !c.hasPrefix("<") {
                             firstUserText = c
@@ -247,16 +247,16 @@ final class ClaudeSessionsStore: ObservableObject {
         return (title, cwdFinal)
     }
 
-    // MARK: - Захват session id Claude Code
+    // MARK: - Capturing the Claude Code session id
 
-    /// Основной источник: реестр живых сессий ~/.claude/sessions/<pid>.json —
-    /// появляется сразу при старте клода и содержит sessionId + cwd. Мы ищем запись,
-    /// чей процесс — потомок шелла нашей вкладки. Фолбэк — новый jsonl в ~/.claude/projects.
+    /// Primary source: the live-session registry ~/.claude/sessions/<pid>.json —
+    /// it appears right when Claude starts and contains sessionId + cwd. We look for the entry
+    /// whose process is a descendant of our tab's shell. Fallback — a new jsonl in ~/.claude/projects.
     func scheduleCapture(for recordID: UUID, launchedAt: Date, shellPID: pid_t?) {
         for delay in [3.0, 6, 12, 25, 60, 150] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self, let rec = self.record(id: recordID) else { return }
-                // id уже пойман для этого запуска — дальше не дёргаемся
+                // id already captured for this launch — stop bothering
                 if rec.claudeSessionID != nil, rec.lastUsedAt >= launchedAt { return }
                 self.captureNow(recordID: recordID, launchedAt: launchedAt, shellPID: shellPID)
             }
@@ -265,7 +265,7 @@ final class ClaudeSessionsStore: ObservableObject {
 
     func captureNow(recordID: UUID, launchedAt: Date, shellPID: pid_t?) {
         guard let rec = record(id: recordID) else { return }
-        // id теперь задаётся при создании — захват нужен только легаси-записям без id
+        // the id is now assigned at creation — capture is only needed for legacy records without one
         guard rec.claudeSessionID == nil else { return }
         var found: String?
         if let shellPID {
@@ -278,7 +278,7 @@ final class ClaudeSessionsStore: ObservableObject {
         update(recordID) { $0.claudeSessionID = found; $0.lastUsedAt = Date() }
     }
 
-    // MARK: реестр живых сессий
+    // MARK: live-session registry
 
     private struct LiveSession: Decodable {
         let pid: Int32
@@ -286,7 +286,7 @@ final class ClaudeSessionsStore: ObservableObject {
         let cwd: String?
     }
 
-    /// sessionId клода, запущенного внутри данного шелла (по цепочке родительских процессов).
+    /// sessionId of the Claude running inside the given shell (via the parent-process chain).
     static func liveSessionID(underShell shellPID: pid_t) -> String? {
         let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/sessions")
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
@@ -295,7 +295,7 @@ final class ClaudeSessionsStore: ObservableObject {
         for file in files where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
                   let live = try? decoder.decode(LiveSession.self, from: data) else { continue }
-            guard kill(live.pid, 0) == 0 else { continue } // процесс должен быть жив
+            guard kill(live.pid, 0) == 0 else { continue } // the process must be alive
             if isProcess(live.pid, descendantOf: shellPID) {
                 return live.sessionId
             }
@@ -322,9 +322,9 @@ final class ClaudeSessionsStore: ObservableObject {
         return false
     }
 
-    /// Важно: фильтруем по дате СОЗДАНИЯ файла, а не изменения — в той же папке может
-    /// параллельно жить другая активная сессия Claude (например, запущенная не из FedTerm),
-    /// и она постоянно дописывает свой jsonl. Наш же запуск всегда создаёт новый файл.
+    /// Important: filter by file CREATION date, not modification — the same folder may
+    /// host another active Claude session in parallel (e.g. one launched outside FedTerm),
+    /// and it keeps appending to its jsonl. Our launch always creates a new file.
     static func newestSessionID(projectPath: String, since: Date) -> String? {
         for encoded in encodedCandidates(projectPath) {
             let dir = AppPaths.claudeProjectsDir.appendingPathComponent(encoded)
@@ -345,7 +345,7 @@ final class ClaudeSessionsStore: ObservableObject {
         return nil
     }
 
-    /// Кодирование пути как у Claude Code: "/" и "." → "-" (на всякий случай пробуем и с "_").
+    /// Path encoding as in Claude Code: "/" and "." → "-" (just in case, also try "_").
     private static func encodedCandidates(_ path: String) -> [String] {
         let primary = String(path.map { $0 == "/" || $0 == "." ? "-" : $0 })
         let alt = String(path.map { $0 == "/" || $0 == "." || $0 == "_" ? "-" : $0 })

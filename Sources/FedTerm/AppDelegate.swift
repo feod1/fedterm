@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// NSHostingView, по которому нельзя таскать окно — окно двигается только
-/// за явную drag-зону в таб-баре (WindowDragArea).
+/// NSHostingView that can't be used to drag the window — the window moves only
+/// via the explicit drag zone in the tab bar (WindowDragArea).
 final class PanelHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }
@@ -32,8 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .environmentObject(pins)
             .environmentObject(claude)
             .environmentObject(favorites)
-        // свой hosting: запрещает окну перехватывать drag по контенту,
-        // иначе перетаскивание вкладок таскало окно целиком
+        // custom hosting view: keeps the window from hijacking drags on content,
+        // otherwise dragging tabs would move the whole window
         let hosting = PanelHostingView(rootView: root)
         panel = SpotlightPanel(contentView: hosting)
         panel.delegate = self
@@ -47,21 +47,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         hotkey.handler = { [weak self] in self?.togglePanel() }
         if !hotkey.registerFromSettings() {
-            // сохранённое сочетание отобрала другая программа — откатываемся к ⌥Space
+            // the saved shortcut was taken by another app — fall back to ⌥Space
             SettingsStore.shared.resetHotKey()
         }
 
-        // прогреваем индекс истории клода в фоне — поповер откроется мгновенно
+        // warm up the Claude history index in the background — the popover opens instantly
         claude.refreshDiscovered()
 
-        // избранные с «заклёпкой» — открыть при запуске
+        // favorites marked with the "pin rivet" — open them on launch
         tabs.launchAutoruns(favorites: favorites.favorites)
 
-        // сразу показываем при первом запуске
+        // show right away on first launch
         panel.present()
     }
 
-    /// Подтверждение выхода, если открыты вкладки с процессами.
+    /// Quit confirmation when tabs with running processes are open.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let running = tabs.tabs.filter { $0.terminal != nil && $0.terminal?.terminated != true }.count
         guard running > 0 else { return .terminateNow }
@@ -79,14 +79,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         tabs.shutdown()
     }
 
-    // MARK: - Показ/скрытие панели
+    // MARK: - Showing/hiding the panel
 
     func togglePanel() {
         if panel.isVisible && NSApp.isActive {
             hidePanel()
         } else {
             panel.present()
-            // фокус сразу в нужное место: терминал — в терминал, домашняя — в поле ввода
+            // focus goes straight where it belongs: terminal tab — the terminal, home tab — the input field
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 if let terminal = self.tabs.selectedTab?.terminal {
@@ -99,19 +99,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func hidePanel() {
+        RecentTabsState.shared.hide()
         panel.saveFrame()
         panel.orderOut(nil)
-        NSApp.hide(nil) // вернуть фокус предыдущему приложению
+        NSApp.hide(nil) // give focus back to the previous app
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        // как Spotlight: кликнул вовне — окно спряталось (если не закреплено пином
-        // и не открыт системный диалог выбора папки)
+        // like Spotlight: click outside — the window hides (unless it's pinned
+        // or a system folder-picker dialog is open)
         guard !PanelBridge.shared.pinned, !PanelBridge.shared.suppressHide else { return }
         panel.orderOut(nil)
     }
 
-    // пользователь двинул или растянул окно — запоминаем точный фрейм
+    // the user moved or resized the window — remember the exact frame
     func windowDidMove(_ notification: Notification) {
         panel.saveFrame()
     }
@@ -120,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.saveFrame()
     }
 
-    // MARK: - Меню (нужно для ⌘C/⌘V/⌘Q и т.п.)
+    // MARK: - Menu (needed for ⌘C/⌘V/⌘Q etc.)
 
     private func setupMenu() {
         let mainMenu = NSMenu()
@@ -148,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func hidePanelAction() { hidePanel() }
 
-    // MARK: - Статус-бар
+    // MARK: - Status bar
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -158,8 +159,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let menu = NSMenu()
         let toggleItem = NSMenuItem(title: toggleItemTitle, action: #selector(toggleAction), keyEquivalent: "")
         toggleMenuItem = toggleItem
-        // сочетание пишем прямо в заголовке: сам хоткей ловит Carbon, а keyEquivalent
-        // в статус-меню был бы лишь декорацией, которую пришлось бы собирать по кодам клавиш
+        // the shortcut goes right in the title: Carbon catches the actual hotkey, and a keyEquivalent
+        // in the status menu would be mere decoration we'd have to assemble from key codes
         NotificationCenter.default.addObserver(
             forName: SettingsStore.hotKeyChanged, object: nil, queue: .main
         ) { [weak self] _ in
@@ -178,25 +179,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         "\(L.toggleWindow)   \(SettingsStore.shared.hotKeyDisplay)"
     }
 
-    // MARK: - Шорткаты вкладок (⌘T/⌘W/⌘1-9/⌘[/⌘])
+    // MARK: - Tab shortcuts (⌘T/⌘W/⌘1-9/⌘[/⌘])
 
     private func setupShortcuts() {
-        // Матчим по физическим keyCode, а не по символам — иначе на русской
-        // раскладке Cmd+T превращается в «Cmd+е» и хоткеи перестают ловиться.
+        // Match by physical keyCode, not by characters — otherwise on the Russian
+        // layout Cmd+T becomes "Cmd+е" and the hotkeys stop being caught.
         let digitKeys: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7, 28: 8, 25: 9]
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isVisible, NSApp.isActive else { return event }
-            // Гарантированный Ctrl+C в терминале: шлём ETX (0x03) напрямую в pty,
-            // минуя kitty-протокол — отмена действий в Claude Code работает всегда.
+            // the "recent tabs" panel is open — keys go to it first
+            if RecentTabsState.shared.visible, self.handleRecentTabsKey(event) {
+                return nil
+            }
+            // Guaranteed Ctrl+C in the terminal: send ETX (0x03) straight to the pty,
+            // bypassing the kitty protocol — canceling actions in Claude Code always works.
             if event.modifierFlags.contains(.control),
                !event.modifierFlags.contains(.command),
-               event.keyCode == 8, // физическая клавиша C
+               event.keyCode == 8, // physical C key
                let termView = self.panel.firstResponder as? FedTermView {
                 termView.send([0x03])
                 return nil
             }
-            // Ctrl+1…9 — автоматизации (⌘-цифры заняты переключением вкладок)
+            // Ctrl+1…9 — automations (⌘-digits are taken by tab switching)
             if event.modifierFlags.contains(.control),
                !event.modifierFlags.contains(.command),
                let n = digitKeys[event.keyCode],
@@ -210,6 +215,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             guard event.modifierFlags.contains(.command),
                   !event.modifierFlags.contains(.control) else { return event }
             switch event.keyCode {
+            case 14: // E — recent tabs panel (like Recent Files in WebStorm)
+                RecentTabsState.shared.show(count: self.tabs.recentTabs.count)
+                return nil
             case 17: // T
                 self.tabs.newTab()
                 return nil
@@ -237,6 +245,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             default:
                 return event
             }
+        }
+    }
+
+    /// Keys for the "recent tabs" panel: arrows/⌘E — move through the list,
+    /// Enter — switch, Esc — close, anything else closes the panel.
+    private func handleRecentTabsKey(_ event: NSEvent) -> Bool {
+        let state = RecentTabsState.shared
+        let recent = tabs.recentTabs
+        guard !recent.isEmpty else {
+            state.hide()
+            return false
+        }
+        switch event.keyCode {
+        case 53: // Esc
+            state.hide()
+            return true
+        case 36, 76: // Enter
+            let idx = min(state.selection, recent.count - 1)
+            tabs.selectedID = recent[idx].id
+            state.hide()
+            return true
+        case 125: // ↓
+            state.moveSelection(by: 1, count: recent.count)
+            return true
+        case 126: // ↑
+            state.moveSelection(by: -1, count: recent.count)
+            return true
+        case 14 where event.modifierFlags.contains(.command): // ⌘E moves further down the list
+            state.moveSelection(by: event.modifierFlags.contains(.shift) ? -1 : 1, count: recent.count)
+            return true
+        default:
+            // any other key — the panel isn't modal, just hide it
+            state.hide()
+            return false
         }
     }
 }

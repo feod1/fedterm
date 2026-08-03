@@ -1,13 +1,13 @@
 import Foundation
 import Combine
 
-/// Автоматизация: bash-команда с хоткеем ⌘1–⌘9. Хоткеи работают только
-/// при открытом окне FedTerm и не уходят в систему/другие приложения.
+/// Automation: a bash command with a ⌘1–⌘9 hotkey. Hotkeys work only
+/// while the FedTerm window is open and are not passed to the system/other apps.
 struct Automation: Codable, Identifiable, Hashable {
     var id = UUID()
     var command: String
     var key: Int          // 1...9 → ⌘1...⌘9
-    var cwd: String?      // папка запуска (по умолчанию — домашняя)
+    var cwd: String?      // working directory (home by default)
 
     var expandedCwd: String? {
         guard let cwd, !cwd.isEmpty else { return nil }
@@ -24,7 +24,7 @@ final class AutomationsStore: ObservableObject {
     static let shared = AutomationsStore()
 
     @Published private(set) var automations: [Automation] = []
-    /// Открыт ли оверлей-конструктор (живёт поверх окна — переживает системные диалоги).
+    /// Whether the builder overlay is open (lives on top of the window — survives system dialogs).
     @Published var editorVisible = false
 
     private init() { load() }
@@ -53,8 +53,8 @@ final class AutomationsStore: ObservableObject {
         save()
     }
 
-    /// Команда запуска: однострочная — как есть; многострочный bash-скрипт
-    /// сохраняется в .sh-файл и запускается через bash (иначе построчный ввод ломал бы конструкции).
+    /// Launch command: a one-liner runs as is; a multiline bash script
+    /// is saved to a .sh file and run via bash (otherwise line-by-line input would break constructs).
     func launchCommand(for automation: Automation) -> String {
         guard automation.command.contains("\n") else { return automation.command }
         try? FileManager.default.createDirectory(at: AppPaths.scriptsDir, withIntermediateDirectories: true)

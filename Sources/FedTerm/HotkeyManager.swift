@@ -1,8 +1,8 @@
 import Carbon.HIToolbox
 import AppKit
 
-/// Глобальный хоткей через Carbon RegisterEventHotKey — работает без прав Accessibility.
-/// По умолчанию Option+Space, переназначается в настройках.
+/// Global hotkey via Carbon RegisterEventHotKey — works without Accessibility permissions.
+/// Option+Space by default, reassignable in settings.
 final class HotkeyManager {
     static let shared = HotkeyManager()
 
@@ -17,8 +17,8 @@ final class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
 
-    /// Регистрирует сочетание. false — система его не отдала (занято другим приложением);
-    /// в этом случае возвращаем прежнее.
+    /// Registers the shortcut. false — the system refused it (taken by another app);
+    /// in that case we restore the previous one.
     @discardableResult
     func register(keyCode newCode: UInt32, modifiers newModifiers: UInt32) -> Bool {
         let previousCode = keyCode
@@ -45,14 +45,14 @@ final class HotkeyManager {
         return true
     }
 
-    /// Регистрирует сочетание, сохранённое в настройках.
+    /// Registers the shortcut saved in settings.
     @discardableResult
     func registerFromSettings() -> Bool {
         register(keyCode: SettingsStore.shared.hotKeyCode, modifiers: SettingsStore.shared.hotKeyModifiers)
     }
 
-    /// Временно снимает хоткей — нужно на время записи нового сочетания, иначе Carbon
-    /// перехватит нажатие раньше, чем его увидит рекордер.
+    /// Temporarily removes the hotkey — needed while recording a new shortcut, otherwise Carbon
+    /// would intercept the keystroke before the recorder sees it.
     func suspend() {
         unregisterHotKey()
     }
@@ -92,12 +92,12 @@ final class HotkeyManager {
     deinit { unregister() }
 }
 
-// MARK: - Представление сочетания
+// MARK: - Shortcut presentation
 
-/// Перевод keyCode и модификаторов в человеческий вид (⌥Space, ⌃⌘K, F13 …)
-/// и конвертация флагов NSEvent в карбоновские.
+/// Turns keyCode and modifiers into a human-readable form (⌥Space, ⌃⌘K, F13 …)
+/// and converts NSEvent flags to Carbon ones.
 enum HotkeyFormatter {
-    /// Символы модификаторов в системном порядке ⌃⌥⇧⌘.
+    /// Modifier symbols in the system order ⌃⌥⇧⌘.
     static func modifierSymbols(_ carbonFlags: UInt32) -> String {
         var out = ""
         if carbonFlags & UInt32(controlKey) != 0 { out += "⌃" }
@@ -120,7 +120,7 @@ enum HotkeyFormatter {
         return carbon
     }
 
-    /// Клавиши, которые не жалко занять целиком — их можно назначать без модификаторов.
+    /// Keys we don't mind claiming outright — they can be assigned without modifiers.
     static func isStandaloneSafe(keyCode: UInt32) -> Bool {
         functionKeys[UInt16(keyCode)] != nil
     }
@@ -146,7 +146,7 @@ enum HotkeyFormatter {
         115: "↖", 119: "↘", 116: "⇞", 121: "⇟",
     ]
 
-    /// Раскладка ANSI — как в системном списке шорткатов, независимо от текущего языка.
+    /// ANSI layout — same as the system shortcut list, regardless of the current input language.
     private static let printableKeys: [UInt16: String] = [
         0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X", 8: "C", 9: "V",
         11: "B", 12: "Q", 13: "W", 14: "E", 15: "R", 16: "Y", 17: "T",

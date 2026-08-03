@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import AppKit
 
-/// Одна вкладка: либо «домашняя» (спотлайт с быстрыми действиями), либо терминал.
+/// A single tab: either "home" (spotlight with quick actions) or a terminal.
 final class Tab: ObservableObject, Identifiable {
     enum Kind {
         case home
@@ -11,7 +11,7 @@ final class Tab: ObservableObject, Identifiable {
 
     let id = UUID()
     @Published var kind: Kind
-    /// Имя, заданное пользователем (двойной клик по вкладке).
+    /// Name set by the user (double-click on the tab).
     @Published var customTitle: String?
 
     init(kind: Kind) {
@@ -48,7 +48,7 @@ final class Tab: ObservableObject, Identifiable {
     }
 }
 
-/// Снимок состояния для восстановления между запусками.
+/// State snapshot for restoring between launches.
 private struct SavedState: Codable {
     struct SavedTab: Codable {
         var isHome: Bool
@@ -56,13 +56,16 @@ private struct SavedState: Codable {
         var cwd: String?
         var title: String?
         var claudeID: UUID?
-        var claudeSID: String?   // историческая сессия без именованной записи
+        var claudeSID: String?   // historical session without a named record
     }
     var tabs: [SavedTab]
     var selectedIndex: Int
+    /// "Recents" order (⌘E) as indexes into tabs — UUIDs are new after a restart.
+    /// Optional: state from older versions without this field reads as before.
+    var mruIndexes: [Int]?
 }
 
-/// Управление вкладками + сохранение состояния (ssh-табы восстанавливаются с реконнектом).
+/// Tab management + state persistence (ssh tabs are restored with a reconnect).
 final class TabsModel: ObservableObject {
     @Published var tabs: [Tab] = []
     @Published var selectedID: UUID?
@@ -71,6 +74,9 @@ final class TabsModel: ObservableObject {
     let claude: ClaudeSessionsStore
     private var cancellables: Set<AnyCancellable> = []
     private var isShuttingDown = false
+    /// Tab usage order: most recent first (for the "recents" panel, ⌘E).
+    private var mru: [UUID] = []
+    private static let mruLimit = 100
 
     init(history: HistoryStore, claude: ClaudeSessionsStore) {
         self.history = history
@@ -81,18 +87,42 @@ final class TabsModel: ObservableObject {
             selectedID = tabs[0].id
         }
 
-        // при изменении истории обновляем ssh-цель активных терминалов
+        // when the history changes, update the ssh target of active terminals
         history.$records
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshSSHTargets() }
             .store(in: &cancellables)
+
+        // every tab switch moves it to the top of the "recents" list
+        $selectedID
+            .compactMap { $0 }
+            .sink { [weak self] id in
+                guard let self else { return }
+                self.mru.removeAll { $0 == id }
+                self.mru.insert(id, at: 0)
+                if self.mru.count > Self.mruLimit {
+                    self.mru.removeLast(self.mru.count - Self.mruLimit)
+                }
+                self.persist()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Tabs by recency of use (current one first); tabs that never had
+    /// focus go last, in tab-bar order.
+    var recentTabs: [Tab] {
+        tabs.enumerated().sorted { a, b in
+            let ia = mru.firstIndex(of: a.element.id) ?? Int.max
+            let ib = mru.firstIndex(of: b.element.id) ?? Int.max
+            return ia == ib ? a.offset < b.offset : ia < ib
+        }.map(\.element)
     }
 
     var selectedTab: Tab? {
         tabs.first { $0.id == selectedID }
     }
 
-    // MARK: - Операции с вкладками
+    // MARK: - Tab operations
 
     func newTab(select: Bool = true) {
         let tab = Tab(kind: .home)
@@ -105,7 +135,7 @@ final class TabsModel: ObservableObject {
     func close(_ tab: Tab) {
         guard let idx = tabs.firstIndex(where: { $0.id == tab.id }) else { return }
         if let terminal = tab.terminal {
-            // последний шанс поймать session id клода перед закрытием
+            // last chance to capture the Claude session id before closing
             if let recordID = terminal.claudeRecordID, let launched = terminal.claudeLaunchedAt {
                 claude.captureNow(recordID: recordID, launchedAt: launched, shellPID: terminal.shellPID)
             }
@@ -113,6 +143,7 @@ final class TabsModel: ObservableObject {
             terminal.terminate()
         }
         tabs.remove(at: idx)
+        mru.removeAll { $0 == tab.id }
         if tabs.isEmpty {
             let home = Tab(kind: .home)
             tabs = [home]
@@ -121,8 +152,8 @@ final class TabsModel: ObservableObject {
             selectedID = tabs[min(idx, tabs.count - 1)].id
         }
         persist()
-        // страховка: жест выбора мог выстрелить после закрытия и повесить
-        // выделение на удалённую вкладку — возвращаем на живую
+        // safety net: the selection gesture could fire after closing and leave
+        // the selection on a removed tab — put it back on a live one
         DispatchQueue.main.async { [weak self] in
             guard let self, self.selectedTab == nil else { return }
             self.selectedID = self.tabs.last?.id
@@ -138,7 +169,7 @@ final class TabsModel: ObservableObject {
         selectedID = tabs[index].id
     }
 
-    /// Перемещает вкладку id на позицию вкладки targetID (для drag&drop в таб-баре).
+    /// Moves tab id to the position of tab targetID (for drag&drop in the tab bar).
     func move(id: UUID, to targetID: UUID) {
         guard let from = tabs.firstIndex(where: { $0.id == id }),
               let to = tabs.firstIndex(where: { $0.id == targetID }),
@@ -154,8 +185,8 @@ final class TabsModel: ObservableObject {
         selectedID = tabs[next].id
     }
 
-    /// Превращает вкладку в терминал (или создаёт новую) и исполняет команду.
-    /// Именно так «окошко-спотлайт превращается в терминал».
+    /// Turns a tab into a terminal (or creates a new one) and runs the command.
+    /// This is exactly how "the spotlight window turns into a terminal".
     @discardableResult
     func openTerminal(in tab: Tab? = nil, command: String? = nil, ssh: SSHTarget? = nil, cwd: String? = nil) -> Tab {
         let autorun = ssh?.sshCommand ?? command
@@ -172,7 +203,7 @@ final class TabsModel: ObservableObject {
             target = Tab(kind: .terminal(controller))
             tabs.append(target)
         }
-        // процесс умер (exit, разрыв ssh) — вкладка закрывается сама
+        // the process died (exit, ssh drop) — the tab closes itself
         controller.onTerminated = { [weak self, weak target] in
             guard let self, let target, !self.isShuttingDown else { return }
             self.close(target)
@@ -185,7 +216,7 @@ final class TabsModel: ObservableObject {
         return target
     }
 
-    /// Открывает (или резюмит) сессию Claude Code в её папке.
+    /// Opens (or resumes) a Claude Code session in its folder.
     @discardableResult
     func openClaude(record: ClaudeSessionRecord, in tab: Tab? = nil) -> Tab {
         let target = openTerminal(in: tab, command: claude.launchCommand(for: record), cwd: record.path)
@@ -200,7 +231,7 @@ final class TabsModel: ObservableObject {
         return target
     }
 
-    /// Открывает историческую сессию клода с диска (без сохранённой записи).
+    /// Opens a historical Claude session from disk (without a saved record).
     @discardableResult
     func openClaudeSession(_ session: DiscoveredSession, in tab: Tab? = nil) -> Tab {
         let target = openTerminal(in: tab, command: "claude --resume \(session.id)", cwd: session.path)
@@ -210,7 +241,7 @@ final class TabsModel: ObservableObject {
         return target
     }
 
-    /// Если последняя команда сессии — ssh, считаем, что таб «в ssh» (для заголовка и восстановления).
+    /// If the session's last command is ssh, consider the tab "in ssh" (for the title and restore).
     private func refreshSSHTargets() {
         var changed = false
         for tab in tabs {
@@ -228,11 +259,11 @@ final class TabsModel: ObservableObject {
         persist()
     }
 
-    // MARK: - Состояние между запусками
+    // MARK: - State between launches
 
     func persist() {
         guard !isShuttingDown || !tabs.isEmpty else { return }
-        // автозапускаемые вкладки не сохраняем — их создаст автозапуск при следующем старте
+        // don't persist autorun tabs — autorun will recreate them on the next start
         let persistable = tabs.filter { $0.terminal?.isAutorun != true }
         guard !persistable.isEmpty else { return }
         let selIdx = persistable.firstIndex(where: { $0.id == selectedID }) ?? 0
@@ -247,14 +278,17 @@ final class TabsModel: ObservableObject {
                     claudeSID: tab.terminal?.claudeSessionID
                 )
             },
-            selectedIndex: selIdx
+            selectedIndex: selIdx,
+            mruIndexes: mru.prefix(Self.mruLimit).compactMap { id in
+                persistable.firstIndex { $0.id == id }
+            }
         )
         if let data = try? JSONEncoder().encode(saved) {
             try? data.write(to: AppPaths.stateFile, options: .atomic)
         }
     }
 
-    /// Автозапуск избранных команд с «заклёпкой» при старте аппки.
+    /// Autorun of favorite commands marked with the "pin rivet" on app start.
     func launchAutoruns(favorites: [FavoriteCommand]) {
         let previousSelection = selectedID
         for fav in favorites where fav.autorun {
@@ -274,7 +308,7 @@ final class TabsModel: ObservableObject {
                 tab.customTitle = savedTab.title
                 tabs.append(tab)
             } else {
-                // клод-таб резюмит свою сессию, ssh-таб реконнектится, обычный — просто шелл
+                // a Claude tab resumes its session, an ssh tab reconnects, a regular one is just a shell
                 let claudeRecord = savedTab.claudeID.flatMap { claude.record(id: $0) }
                 let autorun = claudeRecord.map { claude.launchCommand(for: $0) }
                     ?? savedTab.claudeSID.map { "claude --resume \($0)" }
@@ -303,6 +337,11 @@ final class TabsModel: ObservableObject {
             }
         }
         if !tabs.isEmpty {
+            // first the "recents" order, then the selection — the sink on $selectedID
+            // will move the active tab to the top of the list
+            mru = (saved.mruIndexes ?? []).compactMap { idx in
+                tabs.indices.contains(idx) ? tabs[idx].id : nil
+            }
             let idx = min(max(0, saved.selectedIndex), tabs.count - 1)
             selectedID = tabs[idx].id
         }

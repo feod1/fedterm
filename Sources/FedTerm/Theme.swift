@@ -1,12 +1,12 @@
 import AppKit
 import SwiftTerm
 
-/// Акценты UI (не зависят от темы терминала).
+/// UI accents (independent of the terminal theme).
 enum Theme {
     static let accent = NSColor(hex: 0x61AFEF)
 }
 
-/// Цветовая тема терминала. Codable — кастомные темы сохраняются в json.
+/// Terminal color theme. Codable — custom themes are saved as json.
 struct TerminalTheme: Identifiable, Codable, Equatable {
     var id: String
     var name: String
@@ -14,8 +14,8 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
     var fg: UInt32
     var caret: UInt32
     var selection: UInt32
-    var bgAlpha: CGFloat          // прозрачность фона поверх блюра
-    var ansi: [UInt32]            // 16 цветов
+    var bgAlpha: CGFloat          // background opacity over the blur
+    var ansi: [UInt32]            // 16 colors
 
     var background: NSColor { NSColor(hex: bg) }
     var foreground: NSColor { NSColor(hex: fg) }
@@ -34,7 +34,7 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
 
     static let presets: [TerminalTheme] = [
         TerminalTheme(
-            // точная ANSI-палитра Terminal.app (Basic), тёмно-серый фон + светлый текст
+            // exact ANSI palette of Terminal.app (Basic), dark gray background + light text
             id: "darkgray", name: L.themeDark,
             bg: 0x2B2B2F, fg: 0xE6E6E6, caret: 0xE6E6E6, selection: 0x4A4A52, bgAlpha: 0.88,
             ansi: [
@@ -83,7 +83,7 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
             ]
         ),
         TerminalTheme(
-            // точная ANSI-палитра Terminal.app (Basic), белый фон
+            // exact ANSI palette of Terminal.app (Basic), white background
             id: "light", name: L.themeLight,
             bg: 0xFFFFFF, fg: 0x1A1A1A, caret: 0x1A1A1A, selection: 0xB3D7FF, bgAlpha: 0.96,
             ansi: [
@@ -92,7 +92,7 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
             ]
         ),
         TerminalTheme(
-            // точная ANSI-палитра Terminal.app (Basic), серый фон
+            // exact ANSI palette of Terminal.app (Basic), gray background
             id: "lightgray", name: L.themeLightGray,
             bg: 0xE9E9EC, fg: 0x232323, caret: 0x333333, selection: 0xB8D4F5, bgAlpha: 0.97,
             ansi: [
@@ -142,7 +142,7 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
         ),
     ]
 
-    /// Ищем сперва среди кастомных тем пользователя, потом среди пресетов.
+    /// Look first among the user's custom themes, then among presets.
     static func preset(id: String) -> TerminalTheme {
         CustomThemesStore.shared.theme(id: id)
             ?? presets.first { $0.id == id }
@@ -150,12 +150,12 @@ struct TerminalTheme: Identifiable, Codable, Equatable {
     }
 }
 
-/// Кастомные темы пользователя (редактор в настройках).
+/// User's custom themes (editor in settings).
 final class CustomThemesStore: ObservableObject {
     static let shared = CustomThemesStore()
 
     @Published private(set) var themes: [TerminalTheme] = []
-    /// Тема, открытая в редакторе (nil — редактор закрыт).
+    /// Theme open in the editor (nil — editor closed).
     @Published var editing: TerminalTheme?
 
     private init() { load() }

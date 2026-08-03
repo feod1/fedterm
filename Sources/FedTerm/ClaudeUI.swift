@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Фирменный оранжевый клода.
+/// Claude's signature orange.
 let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
 
-/// Оверлей «как назвать сессию» — появляется после drop папки или ввода пути.
+/// The "name this session" overlay — appears after a folder drop or a typed path.
 struct ClaudeNameOverlay: View {
     let folder: URL
     @EnvironmentObject var claude: ClaudeSessionsStore
@@ -89,7 +89,7 @@ struct ClaudeNameOverlay: View {
     }
 }
 
-/// Кнопка с иконкой клода: поповер со всеми сессиями по проектам.
+/// Button with the Claude icon: a popover with all sessions grouped by project.
 struct ClaudeMenuButton: View {
     @EnvironmentObject var claude: ClaudeSessionsStore
     @EnvironmentObject var tabs: TabsModel
@@ -113,12 +113,12 @@ struct ClaudeMenuButton: View {
     }
 }
 
-/// Поповер сессий: «Сохранённые» (по папкам-проектам) и «Вся история» (по свежести).
+/// Sessions popover: "Saved" (by project folder) and "All history" (by recency).
 struct ClaudeSessionsPopover: View {
     let dismiss: () -> Void
     @EnvironmentObject var claude: ClaudeSessionsStore
     @EnvironmentObject var tabs: TabsModel
-    @State private var mode = 0   // 0 — сохранённые, 1 — вся история
+    @State private var mode = 0   // 0 — saved, 1 — all history
     @State private var searchText = ""
     @State private var visibleCount = 40
 
@@ -187,7 +187,7 @@ struct ClaudeSessionsPopover: View {
         searchText.trimmingCharacters(in: .whitespaces).lowercased()
     }
 
-    /// «Новая сессия»: выбор папки в Finder-диалоге → оверлей имени → создание и запуск.
+    /// "New session": pick a folder in a Finder dialog → name overlay → create and launch.
     private func createNewSession() {
         dismiss()
         PanelBridge.shared.suppressHide = true
@@ -214,7 +214,7 @@ struct ClaudeSessionsPopover: View {
     }
 
     private func open(session: DiscoveredSession) {
-        // если у сессии есть именованная запись — открываем через неё
+        // if the session has a named record — open through it
         if let record = claude.savedRecord(sessionID: session.id) {
             open(record: record)
             return
@@ -224,7 +224,7 @@ struct ClaudeSessionsPopover: View {
         dismiss()
     }
 
-    // MARK: - Сохранённые (по проектам)
+    // MARK: - Saved (by project)
 
     private var filteredSavedGroups: [(path: String, items: [ClaudeSessionRecord])] {
         let q = normalizedQuery
@@ -286,9 +286,9 @@ struct ClaudeSessionsPopover: View {
         }
     }
 
-    // MARK: - Вся история (по свежести: 24 часа / 7 дней / месяц / ранее)
+    // MARK: - All history (by recency: 24 hours / 7 days / month / earlier)
 
-    /// Фильтр по поиску + порционный показ (visibleCount штук за раз).
+    /// Search filter + paged display (visibleCount items at a time).
     private var filteredHistory: [DiscoveredSession] {
         let q = normalizedQuery
         guard !q.isEmpty else { return claude.discovered }
@@ -318,7 +318,7 @@ struct ClaudeSessionsPopover: View {
         ].filter { !$0.1.isEmpty }
     }
 
-    /// Внутри временной группы — раскладка по папкам-проектам (порядок — по свежести).
+    /// Within a time group — layout by project folder (ordered by recency).
     private func projectGroups(_ items: [DiscoveredSession]) -> [(path: String, items: [DiscoveredSession])] {
         var order: [String] = []
         var map: [String: [DiscoveredSession]] = [:]
@@ -401,7 +401,7 @@ struct ClaudeSessionsPopover: View {
     }
 }
 
-/// Строка исторической сессии с диска.
+/// Row for a historical session from disk.
 private struct DiscoveredSessionRow: View {
     let session: DiscoveredSession
     let savedName: String?

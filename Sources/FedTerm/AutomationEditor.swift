@@ -1,8 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Оверлей-конструктор автоматизации: текстарея под bash-скрипт, скрипт из файла,
-/// папка запуска, хоткей. Живёт поверх главного окна — системные диалоги его не закрывают.
+/// Automation builder overlay: textarea for a bash script, script from file,
+/// working directory, hotkey. Lives on top of the main window — system dialogs don't close it.
 struct AutomationEditorOverlay: View {
     @ObservedObject private var automations = AutomationsStore.shared
 
@@ -36,7 +36,7 @@ struct AutomationEditorOverlay: View {
                     .buttonStyle(.plain)
                 }
 
-                // текстарея скрипта
+                // script textarea
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $command)
                         .font(.system(size: 13, design: .monospaced))
@@ -62,7 +62,7 @@ struct AutomationEditorOverlay: View {
                         )
                 )
 
-                // папка запуска
+                // working directory
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
                         .font(.system(size: 11))
@@ -138,7 +138,7 @@ struct AutomationEditorOverlay: View {
         .onAppear {
             key = automations.freeKeys.first ?? 1
             PanelBridge.shared.editingText = true
-            // на время конструктора окно закреплено — не спрячется при потере фокуса
+            // the window is pinned while the builder is open — it won't hide on focus loss
             wasPinned = PanelBridge.shared.pinned
             PanelBridge.shared.pinned = true
             DispatchQueue.main.async { commandFocused = true }
@@ -162,8 +162,8 @@ struct AutomationEditorOverlay: View {
         automations.editorVisible = false
     }
 
-    /// Подгрузить скрипт из файла: текст — в редактор (можно править),
-    /// бинарь/огромный файл — ссылкой bash '<путь>'.
+    /// Load a script from a file: text goes into the editor (editable),
+    /// a binary/huge file becomes a bash '<path>' reference.
     private func pickScriptFile() {
         PanelBridge.shared.suppressHide = true
         let openPanel = NSOpenPanel()

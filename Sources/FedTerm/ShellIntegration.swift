@@ -1,15 +1,15 @@
 import Foundation
 
-/// Генерирует ZDOTDIR-шимы: zsh стартует с нашим конфигом, который подключает
-/// пользовательские ~/.zshenv/.zprofile/.zshrc/.zlogin и вешает preexec-хук,
-/// пишущий каждую выполненную команду в history.jsonl (по сессиям, с cwd и временем).
+/// Generates ZDOTDIR shims: zsh starts with our config, which sources the user's
+/// ~/.zshenv/.zprofile/.zshrc/.zlogin and installs a preexec hook that writes
+/// every executed command to history.jsonl (per session, with cwd and timestamp).
 enum ShellIntegration {
     static func ensureInstalled() {
         let dir = AppPaths.zdotdir
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         write("zshenv", """
-        # FedTerm shim — подключаем пользовательский конфиг
+        # FedTerm shim — source the user's own config
         [[ -f "$HOME/.zshenv" ]] && source "$HOME/.zshenv"
         """)
 
@@ -22,7 +22,7 @@ enum ShellIntegration {
         """)
 
         write("zshrc", """
-        # FedTerm shim — пользовательский конфиг + хук записи истории
+        # FedTerm shim — user config + history capture hook
         [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
 
         if [[ -n "$FEDTERM_HIST" && -n "$FEDTERM_SESSION_ID" ]]; then
@@ -49,7 +49,7 @@ enum ShellIntegration {
             add-zsh-hook preexec __fedterm_preexec
         fi
 
-        # чтобы вложенные zsh вели себя как обычно
+        # so that nested zsh behaves as usual
         unset ZDOTDIR
         """)
     }
@@ -59,13 +59,13 @@ enum ShellIntegration {
         try? (content + "\n").data(using: .utf8)?.write(to: url, options: .atomic)
     }
 
-    /// Окружение для запуска zsh внутри терминала.
+    /// Environment for launching zsh inside the terminal.
     static func environment(sessionID: String) -> [String] {
         var env: [String: String] = ProcessInfo.processInfo.environment
-        // Если FedTerm запущен из-под сессии Claude Code (open наследует env),
-        // маркер CLAUDE_CODE_CHILD_SESSION заставляет клод во вкладках ОТКЛЮЧАТЬ
-        // сохранение транскриптов. Вычищаем всё клодовское — вкладки должны быть
-        // полноценными самостоятельными сессиями.
+        // If FedTerm was launched from inside a Claude Code session (open inherits env),
+        // the CLAUDE_CODE_CHILD_SESSION marker makes Claude in the tabs DISABLE
+        // transcript saving. Strip everything Claude-related — tabs must be
+        // fully independent sessions.
         for key in env.keys where key.hasPrefix("CLAUDE") || key.hasPrefix("ANTHROPIC") {
             env.removeValue(forKey: key)
         }

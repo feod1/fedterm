@@ -1,14 +1,14 @@
 import Foundation
 import Combine
 
-/// Избранная команда: звёздочка на любой команде; «заклёпка» (autorun) —
-/// команда автоматически открывается в своей вкладке при запуске аппки.
+/// Favorite command: a star on any command; the "rivet" (autorun) means
+/// the command automatically opens in its own tab on app launch.
 struct FavoriteCommand: Codable, Identifiable, Hashable {
     var id = UUID()
     var command: String
     var cwd: String?
     var autorun: Bool = false
-    /// Имя, заданное пользователем (карандаш на строке).
+    /// User-defined name (pencil icon on the row).
     var label: String?
 
     var displayName: String {

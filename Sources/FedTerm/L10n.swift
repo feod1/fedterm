@@ -1,8 +1,16 @@
 import Foundation
 
-/// Локализация по языку системы: русский, если система на русском, иначе английский.
+/// Localization: follows the system language (Russian system → Russian, otherwise
+/// English) unless the settings force "ru"/"en". Read once at launch — changing
+/// the language in settings takes effect after an app restart.
 enum L {
-    static let ru = Locale.preferredLanguages.first?.lowercased().hasPrefix("ru") ?? false
+    static let ru: Bool = {
+        switch UserDefaults.standard.string(forKey: "appLanguage") {
+        case "ru": return true
+        case "en": return false
+        default: return Locale.preferredLanguages.first?.lowercased().hasPrefix("ru") ?? false
+        }
+    }()
 
     // Home
     static var searchPlaceholder: String { ru ? "ssh, команда или поиск…" : "ssh, command or search…" }
@@ -42,6 +50,23 @@ enum L {
     static var resetName: String { ru ? "Сбросить имя" : "Reset name" }
     static var closeTab: String { ru ? "Закрыть вкладку" : "Close Tab" }
     static var newTabHelp: String { ru ? "Новая вкладка (⌘T)" : "New tab (⌘T)" }
+    static var recentTabsTitle: String { ru ? "Недавние вкладки" : "Recent tabs" }
+    static var recentTabsHint: String {
+        ru ? "↑↓ или ⌘E — навигация · ⏎ — перейти · esc — закрыть"
+           : "↑↓ or ⌘E to navigate · ⏎ to switch · esc to close"
+    }
+    static var recentTabHome: String { ru ? "Быстрые действия" : "Quick actions" }
+    static var hotkeysTitle: String { ru ? "Горячие клавиши" : "Hotkeys" }
+    static var hkTabs: String { ru ? "новая / закрыть вкладку" : "new / close tab" }
+    static var hkSwitchTab: String { ru ? "переключить вкладку" : "switch tab" }
+    static var hkPrevNextTab: String { ru ? "соседняя вкладка" : "previous / next tab" }
+    static var hkRecentTabs: String { ru ? "недавние вкладки" : "recent tabs" }
+    static var hkFontSize: String { ru ? "размер шрифта" : "font size" }
+    static var hkOpenLink: String { ru ? "открыть ссылку или путь" : "open link or path" }
+    static var hkInterrupt: String { ru ? "прервать программу" : "interrupt the program" }
+    static var hkClick: String { ru ? "клик" : "click" }
+    static var languageTitle: String { ru ? "ЯЗЫК ИНТЕРФЕЙСА" : "INTERFACE LANGUAGE" }
+    static var languageAuto: String { ru ? "Как в системе" : "System default" }
     static var pinWindowOn: String { ru ? "Окно не будет скрываться" : "Window will stay visible" }
     static var pinWindowOff: String { ru ? "Закрепить окно (не скрывать при потере фокуса)" : "Pin window (don't hide on focus loss)" }
 
