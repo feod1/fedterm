@@ -15,6 +15,9 @@ The app also records the commands you run, using a zsh hook. Because of that the
 
 FedTerm lives in the menu bar and has no Dock icon. The shortcut can be changed to any combination you like.
 
+![The FedTerm window](assets/newtab.png)
+*The window on <kbd>⌥</kbd><kbd>Space</kbd>: search field, favourite commands, pinned servers and fresh history in one place.*
+
 ---
 
 ## Features
@@ -40,17 +43,29 @@ FedTerm looks at what you type and offers what fits:
 
 Arrow keys move through the list, <kbd>Enter</kbd> runs the selected item, <kbd>Esc</kbd> clears the field. Matching is fuzzy, so a few letters are usually enough.
 
+![cd suggestions with saved working directories](assets/all%20command%20in%20search%20save%20his%20CWD.png)
+*Every command in history keeps the folder it was run from. Type `cd` and the suggestions take you straight into the folders you actually use.*
+
 ### Saved commands and connections
 
 - **Favourite commands.** Star a command and it stays at the top of the window. You can rename it and mark it to open in its own tab when the app starts.
 - **Saved SSH connections.** Pin a server and give it a label. Recent connections are collected on their own and sorted by how recently and how often you used them.
 - **Command history.** Commands are grouped by age: last hour, six hours, today, yesterday, this week, older. Repeats inside a group are shown once. For the last hour there is also a short summary with counts per tool (`git`, `docker`, `ssh`, `npm` and so on) and clickable server names.
 
+![Command history grouped by date](assets/command%20history%20splitted%20by%20date.png)
+*History grouped by time, repeats collapsed, a star turns any command into a favourite.*
+
 ### Claude Code
 
 - **Named sessions.** Drop a folder on the window or paste a path, then give the session a name. FedTerm starts it with its own session id and later resumes that exact session instead of creating a new one.
 - **All past sessions.** FedTerm reads `~/.claude/projects`, takes the summary or first message of each transcript together with its folder, and lists your sessions grouped by project and by date, with a search field. Results are cached by file modification time, so the list opens without delay.
 - **Clean environment.** `CLAUDE*` and `ANTHROPIC*` variables are removed from new tabs. A session started from FedTerm behaves like a standalone one even if FedTerm itself was launched from Claude Code.
+
+![All Claude Code sessions grouped by project and date](assets/all%20your%20claude%20local%20history%20indexed%20and%20splitted%20by%20date%20and%20folders.png)
+*Your whole local Claude Code history, indexed and grouped by project and date, with search.*
+
+![Saved Claude sessions](assets/claude%20sessions%20can%20be%20pinned.png)
+*A session can be saved under a name — later it resumes exactly where it left off.*
 
 ### Tabs
 
@@ -59,6 +74,10 @@ Arrow keys move through the list, <kbd>Enter</kbd> runs the selected item, <kbd>
 - Open tabs are restored on the next launch. SSH tabs reconnect automatically.
 - The tab title follows the shell: current folder, the title set by the running program, or the server name.
 - If something is still running, FedTerm asks for confirmation before quitting.
+- <kbd>⌘E</kbd> shows recently used tabs; <kbd>Enter</kbd> jumps back to the previous one.
+
+![Recent tabs on ⌘E](assets/recent%20tabs%20hotkey.png)
+*<kbd>⌘E</kbd> lists tabs by last use, the previous one is preselected — press <kbd>Enter</kbd> to jump back.*
 
 ### Custom shortcuts
 
@@ -67,6 +86,9 @@ A command can be bound to <kbd>⌃1</kbd>–<kbd>⌃9</kbd> together with a work
 ### Appearance
 
 There are 13 built-in themes: the Terminal.app palette, One Dark, Dracula, Nord, Gruvbox, both Solarized variants, Tokyo Night, Catppuccin Mocha, Monokai, GitHub Light and two neutral greys. Any theme can be copied and edited: background, text, caret, selection, all 16 ANSI colours and background transparency over the blur. Font family, size and weight are configurable. There is also a thin strokes option for crisper text and a slider that darkens the glass over light wallpapers. Changes apply to open terminals immediately.
+
+![Theme settings](assets/theme%20settings.png)
+*Theme, font and window settings — changes apply to open terminals right away.*
 
 ### The terminal
 
@@ -111,6 +133,7 @@ Move the app to `/Applications` and add it to **System Settings → General → 
 | <kbd>⌘T</kbd> / <kbd>⌘W</kbd> | open or close a tab |
 | <kbd>⌘1</kbd>–<kbd>⌘9</kbd> | switch to a tab |
 | <kbd>⌘[</kbd> / <kbd>⌘]</kbd> | previous or next tab |
+| <kbd>⌘E</kbd> | recently used tabs |
 | <kbd>⌃1</kbd>–<kbd>⌃9</kbd> | run a custom command |
 | <kbd>⌘+</kbd> / <kbd>⌘-</kbd> / <kbd>⌘0</kbd> | font size up, down, reset |
 | <kbd>⌘</kbd>-click | open a link or path from the output |

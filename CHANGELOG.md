@@ -11,6 +11,7 @@ Notable changes to FedTerm.
 - Everything on the home screen can be deleted now: commands in history and in search results, and recent connections are erased from history forever (all their records, so they don't resurface); favourites and pins are removed from their lists. Trash button on the selected row, plus a context menu entry.
 
 ### Changed
+- README shows screenshots of the main features: the home window, `cd` suggestions with saved working directories, history grouped by date, Claude Code sessions, recent tabs on <kbd>⌘E</kbd> and theme settings.
 - Code comments are written in English now.
 - README: building requires full Xcode, not just Command Line Tools — SwiftTerm compiles a Metal shader and the `metal` compiler ships only with Xcode (#1).
 
