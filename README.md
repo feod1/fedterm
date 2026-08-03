@@ -77,7 +77,7 @@ The terminal is [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm): xterm-2
 ## Requirements
 
 - macOS 13 Ventura or newer, Apple Silicon or Intel
-- Xcode Command Line Tools with Swift 5.9 or newer
+- Full Xcode with Swift 5.9 or newer. Command Line Tools alone are not enough: SwiftTerm compiles a Metal shader during the build, and the `metal` compiler ships only with Xcode. Point the tools at it with `sudo xcode-select -s /Applications/Xcode.app`. On Xcode 26 the Metal toolchain is a separate download: `xcodebuild -downloadComponent MetalToolchain`
 - zsh, the default shell on macOS. Command history is captured through it
 - The [`claude`](https://claude.com/claude-code) CLI in your `PATH` for the Claude Code features
 
