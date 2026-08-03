@@ -45,6 +45,41 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    // MARK: - Deleting
+
+    /// Permanently removes every history record with the given command text.
+    func deleteCommand(_ cmd: String) {
+        deleteRecords { $0.cmd == cmd }
+    }
+
+    /// Permanently removes every ssh record for the target (a "recent connection").
+    func deleteSSHTarget(_ target: SSHTarget) {
+        let key = target.displayTarget
+        deleteRecords { rec in
+            guard let cmd = rec.cmd, let parsed = SSHTarget.parse(from: cmd) else { return false }
+            return parsed.displayTarget == key
+        }
+    }
+
+    /// Removes matching records from memory and from history.jsonl.
+    /// Lines that fail to decode are kept.
+    private func deleteRecords(where shouldDelete: (CommandRecord) -> Bool) {
+        records.removeAll(where: shouldDelete)
+        guard let data = try? Data(contentsOf: AppPaths.historyFile),
+              let text = String(data: data, encoding: .utf8) else { return }
+        let decoder = JSONDecoder()
+        let kept = text.split(separator: "\n").filter { line in
+            guard let lineData = line.data(using: .utf8),
+                  let rec = try? decoder.decode(CommandRecord.self, from: lineData) else { return true }
+            return !shouldDelete(rec)
+        }
+        let out = kept.isEmpty ? "" : kept.joined(separator: "\n") + "\n"
+        try? out.data(using: .utf8)?.write(to: AppPaths.historyFile, options: .atomic)
+        // atomic write replaces the inode — the old watcher fd goes stale
+        stopWatching()
+        startWatching()
+    }
+
     // MARK: - Reading
 
     func reload() {

@@ -27,6 +27,8 @@ enum L {
            : "Start typing a command or ssh user@host — Enter opens a terminal right here"
     }
     static var clickToInsert: String { ru ? "Клик — подставить в поле ввода" : "Click to insert into the field" }
+    static var deleteFromHistory: String { ru ? "Удалить из истории навсегда" : "Delete from history forever" }
+    static var delete: String { ru ? "Удалить" : "Delete" }
     static var runInNewTerminal: String { ru ? "Выполнить в новом терминале" : "Run in a new terminal" }
     static var connectSSH: String { ru ? "Подключиться по SSH" : "Connect via SSH" }
     static var pinnedSub: String { ru ? "Закреплено" : "Pinned" }

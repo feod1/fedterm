@@ -217,7 +217,8 @@ struct HomeView: View {
                 onPin: { if let t = pinTarget(of: item) { pins.toggle(t) } },
                 onRename: renameAction(for: item),
                 onStar: starAction(for: item),
-                onAutorun: autorunAction(for: item)
+                onAutorun: autorunAction(for: item),
+                onDelete: deleteAction(for: item)
             )
             .id(item.id)
             .contentShape(Rectangle())
@@ -302,6 +303,24 @@ struct HomeView: View {
             return { favorites.toggle(command: cmd, cwd: rec.cwd) }
         case .runQuery(let q):
             return { favorites.toggle(command: q, cwd: nil) }
+        default:
+            return nil
+        }
+    }
+
+    /// Trash: history rows and recent connections are erased from history forever,
+    /// favorites and pins are just removed from their lists.
+    private func deleteAction(for item: HomeItem) -> (() -> Void)? {
+        switch item {
+        case .recentCommand(let rec):
+            guard let cmd = rec.cmd else { return nil }
+            return { history.deleteCommand(cmd) }
+        case .recentSSH(let target):
+            return { history.deleteSSHTarget(target) }
+        case .favorite(let fav):
+            return { favorites.remove(fav.id) }
+        case .pinned(let target):
+            return { pins.toggle(target) }
         default:
             return nil
         }
@@ -423,6 +442,16 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .opacity(isSelected || favorites.isFavorite(cmd ) ? 1 : 0)
                 .help(favorites.isFavorite(cmd) ? L.unstarHelp : L.starHelp)
+                Button {
+                    history.deleteCommand(cmd)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .opacity(isSelected ? 1 : 0)
+                .help(L.deleteFromHistory)
             }
             if isSelected {
                 Image(systemName: "return")
@@ -440,6 +469,11 @@ struct HomeView: View {
                 .fill(isSelected ? Color.white.opacity(0.12) : .clear)
         )
         .contentShape(Rectangle())
+        .contextMenu {
+            if let cmd = rec.cmd {
+                Button(L.deleteFromHistory, role: .destructive) { history.deleteCommand(cmd) }
+            }
+        }
     }
 
     // MARK: - Actions
@@ -525,6 +559,7 @@ private struct HomeRow: View {
     var onRename: ((String?) -> Void)?
     var onStar: (() -> Void)?
     var onAutorun: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     @State private var editing = false
     @State private var draft = ""
@@ -580,6 +615,9 @@ private struct HomeRow: View {
             if onStar != nil {
                 Button(isFavorite ? L.unstarHelp : L.starHelp) { onStar?() }
             }
+            if onDelete != nil {
+                Button(deleteHelp, role: .destructive) { onDelete?() }
+            }
         }
     }
 
@@ -625,6 +663,24 @@ private struct HomeRow: View {
             .buttonStyle(.plain)
             .opacity(isSelected || isPinned ? 1 : 0)
             .help(isPinned ? L.unpinHelp : L.pinHelp)
+        }
+        if let onDelete {
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .opacity(isSelected ? 1 : 0)
+            .help(deleteHelp)
+        }
+    }
+
+    /// History-backed rows are erased forever; favorites/pins are just removed.
+    private var deleteHelp: String {
+        switch item {
+        case .recentCommand, .recentSSH: return L.deleteFromHistory
+        default: return L.delete
         }
     }
 
